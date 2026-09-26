@@ -1,8 +1,5 @@
-<!doctype html>
-<html lang="zh-Hant">
-<head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>警察法規刷題</title>
 <style>
 :root {
@@ -15,11 +12,11 @@
   :root:not([data-theme="light"]) {
     --bg: #14171b; --card: #1d2127; --text: #e6e9ed; --muted: #9aa3ad; --line: #323840;
     --accent: #7ea3f2; --accent-soft: #24304a; --ok: #5cc98a; --ok-soft: #1c3527;
-    --bad: #f07b7b; --bad-soft: #402325; --warn: #e0b050;
+    --bad: #f07b7b; --bad-soft: #402325; --warn: #e0b050; color-scheme: dark;
   }
 }
-:root[data-theme="dark"] {
-  --bg: #14171b; --card: #1d2127; --text: #e6e9ed; --muted: #9aa3ad; --line: #323840;
+  :root[data-theme="dark"] {
+  color-scheme: dark; --bg: #14171b; --card: #1d2127; --text: #e6e9ed; --muted: #9aa3ad; --line: #323840;
   --accent: #7ea3f2; --accent-soft: #24304a; --ok: #5cc98a; --ok-soft: #1c3527;
   --bad: #f07b7b; --bad-soft: #402325; --warn: #e0b050;
 }
@@ -30,7 +27,7 @@ body {
   font-size: var(--fs); line-height: 1.7;
 }
 header {
-  position: sticky; top: 0; z-index: 5; background: var(--card); border-bottom: 1px solid var(--line);
+  position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5; background: var(--card); border-bottom: 1px solid var(--line);
 }
 .bar { max-width: 860px; margin: 0 auto; padding: 10px 16px; display: flex; align-items: center; gap: 12px; }
 .bar h1 { font-size: 17px; margin: 0; flex: 1; cursor: pointer; }
@@ -95,13 +92,14 @@ h2 { font-size: 1.15em; margin: 0 0 10px; }
 .ans-line b.bad { color: var(--bad); }
 .explain { margin-top: 8px; padding: 8px 12px; border-radius: 8px; background: var(--accent-soft); font-size: .9em; }
 .hidden { display: none !important; }
+[hidden] { display: none !important; }
+.confirm-box { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; justify-content: space-between; margin-top: 12px; padding: 10px 12px; border-radius: 8px; background: var(--bad-soft); color: var(--bad); font-size: 15px; }
+button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 @media (max-width: 560px) {
   .bar h1 { font-size: 15px; }
   .card { padding: 14px; }
 }
 </style>
-</head>
-<body>
 <header>
   <div class="bar">
     <h1 id="homeLink" title="回到章節選擇">警察法規刷題</h1>
@@ -148,6 +146,10 @@ h2 { font-size: 1.15em; margin: 0 0 10px; }
       <div class="actions" style="justify-content:space-between">
         <span class="muted small" id="answeredInfo"></span>
         <button class="primary" id="submitBtn">交卷批改</button>
+      </div>
+      <div class="confirm-box" id="confirmBox" hidden>
+        <span id="confirmMsg"></span>
+        <span class="actions"><button id="confirmNo">繼續作答</button><button class="primary" id="confirmYes">確定交卷</button></span>
       </div>
       <div class="grid" id="qGrid"></div>
     </div>
@@ -317,8 +319,12 @@ h2 { font-size: 1.15em; margin: 0 0 10px; }
 
   $("submitBtn").onclick = () => {
     const left = quiz.answers.filter((a) => !a).length;
-    if (left && !confirm(`還有 ${left} 題未作答，確定要交卷嗎？（未作答以答錯計）`)) return;
-    grade();
+    if (!left) return grade();
+    $("confirmMsg").textContent = `還有 ${left} 題未作答，確定要交卷嗎？（未作答以答錯計）`;
+    $("confirmBox").hidden = false;
+  };
+  $("confirmNo").onclick = () => { $("confirmBox").hidden = true; };
+  $("confirmYes").onclick = () => { $("confirmBox").hidden = true; grade();
   };
 
   // ---- 批改結果 ----
@@ -371,7 +377,6 @@ h2 { font-size: 1.15em; margin: 0 0 10px; }
   };
   $("backBtn").onclick = () => { quiz = null; renderSelect(); show("viewSelect"); };
   $("homeLink").onclick = () => {
-    if (!$("viewQuiz").classList.contains("hidden") && !confirm("回到章節選擇？目前作答進度會保留，下次可繼續。")) return;
     renderSelect();
     show("viewSelect");
     offerResume();
@@ -407,5 +412,3 @@ h2 { font-size: 1.15em; margin: 0 0 10px; }
   offerResume();
 })();
 </script>
-</body>
-</html>
