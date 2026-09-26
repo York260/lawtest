@@ -24,6 +24,7 @@ ROOT = Path(__file__).resolve().parent.parent
 WORK = ROOT / "work"
 KEYS = "ABCDE"
 LOWCONF = float(__import__("os").environ.get("LOWCONF", 20))  # 低於此信心值的中文字列為可疑
+TOPCUT = 0.11  # 頁首裁掉的比例（考卷用較小值）
 MEANCONF = float(__import__("os").environ.get("MEANCONF", 80))
 
 # ---------- 讀 TSV ----------
@@ -47,7 +48,7 @@ def load_lines(pno):
     for ws in lines.values():
         ln = {"words": ws, "left": min(w["left"] for w in ws), "right": max(w["right"] for w in ws),
               "top": min(w["top"] for w in ws), "bottom": max(w["bottom"] for w in ws), "page": pno}
-        if ln["top"] < height * 0.11:  # 頁首（Chapter X 章名 / 警察法規 頁碼）
+        if ln["top"] < height * TOPCUT:  # 頁首（Chapter X 章名 / 警察法規 頁碼）
             continue
         out.append(ln)
     out.sort(key=lambda l: l["top"])
