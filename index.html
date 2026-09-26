@@ -1,0 +1,411 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>警察法規刷題</title>
+<style>
+:root {
+  --bg: #f6f7f9; --card: #fff; --text: #1d232b; --muted: #66707c; --line: #dde1e6;
+  --accent: #2458c6; --accent-soft: #e8eefb; --ok: #1a7f45; --ok-soft: #e4f4ea;
+  --bad: #c22f2f; --bad-soft: #fbe8e8; --warn: #9a6400;
+  --fs: 18px;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #14171b; --card: #1d2127; --text: #e6e9ed; --muted: #9aa3ad; --line: #323840;
+    --accent: #7ea3f2; --accent-soft: #24304a; --ok: #5cc98a; --ok-soft: #1c3527;
+    --bad: #f07b7b; --bad-soft: #402325; --warn: #e0b050;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #14171b; --card: #1d2127; --text: #e6e9ed; --muted: #9aa3ad; --line: #323840;
+  --accent: #7ea3f2; --accent-soft: #24304a; --ok: #5cc98a; --ok-soft: #1c3527;
+  --bad: #f07b7b; --bad-soft: #402325; --warn: #e0b050;
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0; background: var(--bg); color: var(--text);
+  font-family: "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", system-ui, sans-serif;
+  font-size: var(--fs); line-height: 1.7;
+}
+header {
+  position: sticky; top: 0; z-index: 5; background: var(--card); border-bottom: 1px solid var(--line);
+}
+.bar { max-width: 860px; margin: 0 auto; padding: 10px 16px; display: flex; align-items: center; gap: 12px; }
+.bar h1 { font-size: 17px; margin: 0; flex: 1; cursor: pointer; }
+.font-ctrl { display: flex; align-items: center; gap: 6px; font-size: 14px; }
+.font-ctrl button { width: 36px; height: 32px; padding: 0; font-size: 15px; }
+.font-ctrl span { min-width: 38px; text-align: center; color: var(--muted); }
+main { max-width: 860px; margin: 0 auto; padding: 16px 16px 60px; }
+.card { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 18px; margin-bottom: 14px; }
+button {
+  font: inherit; font-size: 15px; cursor: pointer; border-radius: 8px; border: 1px solid var(--line);
+  background: var(--card); color: var(--text); padding: 8px 14px;
+}
+button:hover:not(:disabled) { border-color: var(--accent); }
+button:disabled { opacity: .45; cursor: default; }
+button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+:root[data-theme="dark"] button.primary { color: #0f1520; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) button.primary { color: #0f1520; } }
+.muted { color: var(--muted); }
+.small { font-size: 14px; }
+h2 { font-size: 1.15em; margin: 0 0 10px; }
+.chapter-title { font-weight: 700; margin-bottom: 8px; }
+.sec-list label { display: flex; align-items: center; gap: 10px; padding: 8px 4px; border-top: 1px solid var(--line); cursor: pointer; }
+.sec-list label:first-of-type { border-top: 0; }
+.sec-list input { width: 20px; height: 20px; accent-color: var(--accent); }
+.sec-list .count { margin-left: auto; font-size: 14px; color: var(--muted); }
+.options-row { display: flex; flex-wrap: wrap; gap: 16px; margin: 6px 0 14px; font-size: 15px; }
+.options-row label { display: flex; align-items: center; gap: 6px; cursor: pointer; }
+.actions { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+.progress { height: 6px; background: var(--line); border-radius: 3px; overflow: hidden; margin: 8px 0 14px; }
+.progress div { height: 100%; background: var(--accent); transition: width .2s; }
+.q-meta { display: flex; justify-content: space-between; font-size: 14px; color: var(--muted); }
+.q-text { margin: 6px 0 14px; font-weight: 500; }
+.opt {
+  display: flex; gap: 10px; width: 100%; text-align: left; font-size: var(--fs); line-height: 1.6;
+  padding: 12px 14px; margin-bottom: 10px; border-radius: 10px;
+}
+.opt .key { font-weight: 700; flex: none; }
+.opt.selected { border-color: var(--accent); background: var(--accent-soft); box-shadow: inset 0 0 0 1px var(--accent); }
+.nav { display: flex; justify-content: space-between; gap: 10px; margin-top: 6px; }
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(40px, 1fr)); gap: 6px; margin-top: 10px; }
+.grid button { padding: 6px 0; font-size: 14px; }
+.grid button.done { background: var(--accent-soft); border-color: var(--accent); }
+.grid button.cur { outline: 2px solid var(--accent); outline-offset: 1px; }
+.grid button.right { background: var(--ok-soft); border-color: var(--ok); color: var(--ok); }
+.grid button.wrong { background: var(--bad-soft); border-color: var(--bad); color: var(--bad); }
+.score { text-align: center; }
+.score .big { font-size: 2.4em; font-weight: 700; line-height: 1.2; }
+.score .big .of { color: var(--muted); font-size: .55em; font-weight: 500; }
+.filter { display: flex; gap: 8px; margin: 4px 0 12px; flex-wrap: wrap; }
+.filter button.on { background: var(--accent-soft); border-color: var(--accent); }
+.review { scroll-margin-top: 70px; }
+.review.right { border-left: 5px solid var(--ok); }
+.review.wrong { border-left: 5px solid var(--bad); }
+.review .ro { padding: 4px 8px; border-radius: 6px; margin: 2px 0; display: flex; gap: 8px; }
+.review .ro.correct { background: var(--ok-soft); color: var(--ok); font-weight: 600; }
+.review .ro.mine-wrong { background: var(--bad-soft); color: var(--bad); text-decoration: line-through; }
+.tag { display: inline-block; font-size: 13px; padding: 1px 8px; border-radius: 10px; margin-left: 6px; vertical-align: 2px; }
+.tag.right { background: var(--ok-soft); color: var(--ok); }
+.tag.wrong { background: var(--bad-soft); color: var(--bad); }
+.ans-line { margin-top: 8px; font-size: .92em; }
+.ans-line b.ok { color: var(--ok); }
+.ans-line b.bad { color: var(--bad); }
+.explain { margin-top: 8px; padding: 8px 12px; border-radius: 8px; background: var(--accent-soft); font-size: .9em; }
+.hidden { display: none !important; }
+@media (max-width: 560px) {
+  .bar h1 { font-size: 15px; }
+  .card { padding: 14px; }
+}
+</style>
+</head>
+<body>
+<header>
+  <div class="bar">
+    <h1 id="homeLink" title="回到章節選擇">警察法規刷題</h1>
+    <div class="font-ctrl" aria-label="文字大小">
+      <button id="fontDown" aria-label="縮小文字">A−</button>
+      <span id="fontVal">18</span>
+      <button id="fontUp" aria-label="放大文字">A＋</button>
+    </div>
+  </div>
+</header>
+
+<main>
+  <!-- 選擇章節 -->
+  <section id="viewSelect">
+    <div class="card">
+      <h2>選擇題庫</h2>
+      <p class="muted small" id="bankNote"></p>
+      <div id="chapterList"></div>
+    </div>
+    <div class="card">
+      <div class="options-row">
+        <label><input type="checkbox" id="optShuffle"> 題目順序隨機</label>
+      </div>
+      <div class="actions">
+        <button class="primary" id="startBtn" disabled>開始作答</button>
+        <span class="muted small" id="selCount">尚未選擇</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- 作答 -->
+  <section id="viewQuiz" class="hidden">
+    <div class="card">
+      <div class="q-meta"><span id="qSource"></span><span id="qCounter"></span></div>
+      <div class="progress"><div id="qProgress"></div></div>
+      <div class="q-text" id="qText"></div>
+      <div id="qOptions"></div>
+      <div class="nav">
+        <button id="prevBtn">← 上一題</button>
+        <button id="nextBtn">下一題 →</button>
+      </div>
+    </div>
+    <div class="card">
+      <div class="actions" style="justify-content:space-between">
+        <span class="muted small" id="answeredInfo"></span>
+        <button class="primary" id="submitBtn">交卷批改</button>
+      </div>
+      <div class="grid" id="qGrid"></div>
+    </div>
+  </section>
+
+  <!-- 結果 -->
+  <section id="viewResult" class="hidden">
+    <div class="card score">
+      <div class="muted small" id="resSource"></div>
+      <div class="big"><span id="resRight"></span><span class="of"> / <span id="resTotal"></span> 題</span></div>
+      <div class="muted small" id="resDetail"></div>
+      <div class="actions" style="justify-content:center;margin-top:12px">
+        <button id="retryWrongBtn">只重做錯題</button>
+        <button id="retryAllBtn">整回重做</button>
+        <button class="primary" id="backBtn">回章節選擇</button>
+      </div>
+    </div>
+    <div class="grid" id="resGrid" style="margin-bottom:14px"></div>
+    <div class="filter" id="resFilter">
+      <button data-f="all" class="on">全部</button>
+      <button data-f="wrong">只看錯題</button>
+      <button data-f="right">只看答對</button>
+    </div>
+    <div id="resList"></div>
+  </section>
+</main>
+
+<script src="data/questions.js"></script>
+<script>
+(function () {
+  const BANK = window.QUESTION_BANK;
+  const KEYS = ["A", "B", "C", "D"];
+  const $ = (id) => document.getElementById(id);
+  const store = {
+    get(k, d) { try { const v = localStorage.getItem(k); return v === null ? d : JSON.parse(v); } catch (e) { return d; } },
+    set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} },
+  };
+  const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+
+  // ---- 文字大小 ----
+  let fs = store.get("fontSize", 18);
+  function applyFont() {
+    document.documentElement.style.setProperty("--fs", fs + "px");
+    $("fontVal").textContent = fs;
+    $("fontDown").disabled = fs <= 14;
+    $("fontUp").disabled = fs >= 30;
+    store.set("fontSize", fs);
+  }
+  $("fontDown").onclick = () => { fs = Math.max(14, fs - 2); applyFont(); };
+  $("fontUp").onclick = () => { fs = Math.min(30, fs + 2); applyFont(); };
+  applyFont();
+
+  // ---- 章節選擇 ----
+  const sectionMap = {};
+  BANK.chapters.forEach((ch) => ch.sections.forEach((s) => { sectionMap[s.id] = { ch, s }; }));
+  $("bankNote").textContent = BANK.note || "";
+
+  function renderSelect() {
+    const saved = store.get("selectedSections", []);
+    $("chapterList").innerHTML = BANK.chapters.map((ch) => {
+      const total = ch.sections.reduce((n, s) => n + s.questions.length, 0);
+      return `<div class="card" style="margin:10px 0 0;padding:12px 14px">
+        <div class="chapter-title">Chapter ${ch.chapter}　${esc(ch.title)} <span class="muted small">（${total} 題）</span></div>
+        <div class="sec-list">
+          <label><input type="checkbox" class="ch-all" data-ch="${ch.id}"> <b>整章全部</b><span class="count">${total} 題</span></label>
+          ${ch.sections.map((s) => `<label><input type="checkbox" class="sec" data-ch="${ch.id}" value="${s.id}" ${saved.includes(s.id) ? "checked" : ""}>
+            ${esc(s.title)}<span class="count">${s.questions.length} 題</span></label>`).join("")}
+        </div></div>`;
+    }).join("");
+    document.querySelectorAll(".ch-all").forEach((box) => {
+      box.onchange = () => {
+        document.querySelectorAll(`.sec[data-ch="${box.dataset.ch}"]`).forEach((b) => (b.checked = box.checked));
+        updateSel();
+      };
+    });
+    document.querySelectorAll(".sec").forEach((b) => (b.onchange = updateSel));
+    $("optShuffle").checked = store.get("shuffle", false);
+    updateSel();
+  }
+  function selectedIds() { return [...document.querySelectorAll(".sec:checked")].map((b) => b.value); }
+  function updateSel() {
+    BANK.chapters.forEach((ch) => {
+      const secs = [...document.querySelectorAll(`.sec[data-ch="${ch.id}"]`)];
+      const all = document.querySelector(`.ch-all[data-ch="${ch.id}"]`);
+      all.checked = secs.every((b) => b.checked);
+      all.indeterminate = !all.checked && secs.some((b) => b.checked);
+    });
+    const ids = selectedIds();
+    const n = ids.reduce((t, id) => t + sectionMap[id].s.questions.length, 0);
+    $("selCount").textContent = ids.length ? `已選 ${ids.length} 回，共 ${n} 題` : "尚未選擇";
+    $("startBtn").disabled = !ids.length;
+  }
+  $("startBtn").onclick = () => {
+    const ids = selectedIds();
+    store.set("selectedSections", ids);
+    store.set("shuffle", $("optShuffle").checked);
+    let qs = [];
+    ids.forEach((id) => {
+      const { ch, s } = sectionMap[id];
+      s.questions.forEach((q) => qs.push({ ...q, src: `Ch${ch.chapter} ${ch.title}・${s.title}` }));
+    });
+    if ($("optShuffle").checked) shuffle(qs);
+    const label = ids.map((id) => `Ch${sectionMap[id].ch.chapter} ${sectionMap[id].s.title}`).join("、");
+    startQuiz(qs, label);
+  };
+  function shuffle(a) {
+    for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; }
+    return a;
+  }
+
+  // ---- 作答 ----
+  let quiz = null; // { qs, answers, idx, label }
+  function show(view) {
+    ["viewSelect", "viewQuiz", "viewResult"].forEach((v) => $(v).classList.toggle("hidden", v !== view));
+    window.scrollTo(0, 0);
+  }
+  function startQuiz(qs, label) {
+    quiz = { qs, answers: new Array(qs.length).fill(null), idx: 0, label };
+    saveProgress();
+    renderQuiz();
+    show("viewQuiz");
+  }
+  function saveProgress() { store.set("progress", quiz ? { ids: quiz.qs.map((q) => q.id), answers: quiz.answers, idx: quiz.idx, label: quiz.label } : null); }
+
+  function renderQuiz() {
+    const q = quiz.qs[quiz.idx];
+    const n = quiz.qs.length;
+    $("qSource").textContent = `${q.src}　第 ${q.number} 題`;
+    $("qCounter").textContent = `${quiz.idx + 1} / ${n}`;
+    $("qProgress").style.width = ((quiz.idx + 1) / n) * 100 + "%";
+    $("qText").textContent = q.question;
+    $("qOptions").innerHTML = KEYS.map((k) =>
+      `<button class="opt ${quiz.answers[quiz.idx] === k ? "selected" : ""}" data-k="${k}"><span class="key">(${k})</span><span>${esc(q.options[k])}</span></button>`
+    ).join("");
+    document.querySelectorAll(".opt").forEach((b) => (b.onclick = () => choose(b.dataset.k)));
+    $("prevBtn").disabled = quiz.idx === 0;
+    $("nextBtn").textContent = quiz.idx === n - 1 ? "最後一題" : "下一題 →";
+    $("nextBtn").disabled = quiz.idx === n - 1;
+    const done = quiz.answers.filter(Boolean).length;
+    $("answeredInfo").textContent = `已作答 ${done} / ${n}　（點題號可跳題）`;
+    $("qGrid").innerHTML = quiz.qs.map((_, i) =>
+      `<button data-i="${i}" class="${quiz.answers[i] ? "done" : ""} ${i === quiz.idx ? "cur" : ""}">${i + 1}</button>`
+    ).join("");
+    document.querySelectorAll("#qGrid button").forEach((b) => (b.onclick = () => go(+b.dataset.i)));
+  }
+  function choose(k) {
+    quiz.answers[quiz.idx] = quiz.answers[quiz.idx] === k ? null : k;
+    saveProgress();
+    renderQuiz();
+  }
+  function go(i) {
+    if (i < 0 || i >= quiz.qs.length) return;
+    quiz.idx = i;
+    saveProgress();
+    renderQuiz();
+  }
+  $("prevBtn").onclick = () => go(quiz.idx - 1);
+  $("nextBtn").onclick = () => go(quiz.idx + 1);
+  document.addEventListener("keydown", (e) => {
+    if ($("viewQuiz").classList.contains("hidden") || e.ctrlKey || e.metaKey || e.altKey) return;
+    const k = e.key.toUpperCase();
+    if (KEYS.includes(k)) choose(k);
+    else if (/^[1-4]$/.test(e.key)) choose(KEYS[+e.key - 1]);
+    else if (e.key === "ArrowLeft") go(quiz.idx - 1);
+    else if (e.key === "ArrowRight") go(quiz.idx + 1);
+  });
+
+  $("submitBtn").onclick = () => {
+    const left = quiz.answers.filter((a) => !a).length;
+    if (left && !confirm(`還有 ${left} 題未作答，確定要交卷嗎？（未作答以答錯計）`)) return;
+    grade();
+  };
+
+  // ---- 批改結果 ----
+  let filter = "all";
+  function grade() {
+    const res = quiz.qs.map((q, i) => ({ q, mine: quiz.answers[i], ok: quiz.answers[i] === q.answer }));
+    const right = res.filter((r) => r.ok).length;
+    const blank = res.filter((r) => !r.mine).length;
+    quiz.result = res;
+    store.set("progress", null);
+    $("resSource").textContent = quiz.label;
+    $("resRight").textContent = right;
+    $("resTotal").textContent = res.length;
+    $("resDetail").textContent = `答對 ${right} 題・答錯 ${res.length - right - blank} 題・未作答 ${blank} 題・正確率 ${Math.round((right / res.length) * 100)}%`;
+    $("retryWrongBtn").disabled = right === res.length;
+    $("resGrid").innerHTML = res.map((r, i) => `<button data-i="${i}" class="${r.ok ? "right" : "wrong"}">${i + 1}</button>`).join("");
+    document.querySelectorAll("#resGrid button").forEach((b) => (b.onclick = () => {
+      setFilter("all");
+      document.getElementById("r" + b.dataset.i).scrollIntoView({ behavior: "smooth", block: "start" });
+    }));
+    setFilter("all");
+    show("viewResult");
+  }
+  function setFilter(f) {
+    filter = f;
+    document.querySelectorAll("#resFilter button").forEach((b) => b.classList.toggle("on", b.dataset.f === f));
+    renderResultList();
+  }
+  document.querySelectorAll("#resFilter button").forEach((b) => (b.onclick = () => setFilter(b.dataset.f)));
+  function renderResultList() {
+    const items = quiz.result.map((r, i) => ({ ...r, i })).filter((r) => filter === "all" || (filter === "wrong" ? !r.ok : r.ok));
+    $("resList").innerHTML = items.length ? items.map(({ q, mine, ok, i }) => `
+      <div class="card review ${ok ? "right" : "wrong"}" id="r${i}">
+        <div class="q-meta"><span>${i + 1}.　${esc(q.src)}　第 ${q.number} 題</span>
+          <span class="tag ${ok ? "right" : "wrong"}">${ok ? "答對" : mine ? "答錯" : "未作答"}</span></div>
+        <div class="q-text">${esc(q.question)}</div>
+        ${KEYS.map((k) => `<div class="ro ${k === q.answer ? "correct" : k === mine ? "mine-wrong" : ""}"><span>(${k})</span><span>${esc(q.options[k])}</span></div>`).join("")}
+        <div class="ans-line">你的答案：<b class="${ok ? "ok" : "bad"}">${mine ? "(" + mine + ")" : "未作答"}</b>　正確答案：<b class="ok">(${q.answer})</b></div>
+        ${q.explanation ? `<div class="explain">解析：${esc(q.explanation)}</div>` : ""}
+      </div>`).join("") : `<div class="card muted">沒有符合的題目</div>`;
+  }
+  $("retryWrongBtn").onclick = () => {
+    const wrong = quiz.result.filter((r) => !r.ok).map((r) => r.q);
+    startQuiz(wrong, quiz.label + "（錯題重做）");
+  };
+  $("retryAllBtn").onclick = () => {
+    const qs = quiz.qs.slice();
+    if (store.get("shuffle", false)) shuffle(qs);
+    startQuiz(qs, quiz.label.replace(/（錯題重做）$/, ""));
+  };
+  $("backBtn").onclick = () => { quiz = null; renderSelect(); show("viewSelect"); };
+  $("homeLink").onclick = () => {
+    if (!$("viewQuiz").classList.contains("hidden") && !confirm("回到章節選擇？目前作答進度會保留，下次可繼續。")) return;
+    renderSelect();
+    show("viewSelect");
+    offerResume();
+  };
+
+  // ---- 續做上次進度 ----
+  const byId = {};
+  BANK.chapters.forEach((ch) => ch.sections.forEach((s) => s.questions.forEach((q) => {
+    byId[q.id] = { ...q, src: `Ch${ch.chapter} ${ch.title}・${s.title}` };
+  })));
+  function offerResume() {
+    const p = store.get("progress", null);
+    const old = document.getElementById("resumeCard");
+    if (old) old.remove();
+    if (!p || !p.ids || !p.ids.every((id) => byId[id])) return;
+    const done = p.answers.filter(Boolean).length;
+    const card = document.createElement("div");
+    card.className = "card";
+    card.id = "resumeCard";
+    card.innerHTML = `<div class="actions" style="justify-content:space-between">
+      <span>上次未完成：${esc(p.label)}（已作答 ${done} / ${p.ids.length}）</span>
+      <span class="actions"><button id="discardBtn">放棄</button><button class="primary" id="resumeBtn">繼續作答</button></span></div>`;
+    $("viewSelect").prepend(card);
+    $("resumeBtn").onclick = () => {
+      quiz = { qs: p.ids.map((id) => byId[id]), answers: p.answers, idx: p.idx || 0, label: p.label };
+      renderQuiz();
+      show("viewQuiz");
+    };
+    $("discardBtn").onclick = () => { store.set("progress", null); card.remove(); };
+  }
+
+  renderSelect();
+  offerResume();
+})();
+</script>
+</body>
+</html>
