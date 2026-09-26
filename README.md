@@ -41,3 +41,7 @@
 新增或修改題目後執行 `python3 build.py` 重新產生 `data/questions.js`。
 
 目前收錄：Chapter 2 警察法（衝刺第一回、第二回，共 100 題）。
+
+## 轉換更多章節
+
+見 `PIPELINE.md`（Tesseract OCR → 程式切題 → 看圖核對 → 合併）。

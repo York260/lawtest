@@ -280,9 +280,9 @@ button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
     $("qSource").textContent = `${q.src}　第 ${q.number} 題`;
     $("qCounter").textContent = `${quiz.idx + 1} / ${n}`;
     $("qProgress").style.width = ((quiz.idx + 1) / n) * 100 + "%";
-    $("qText").textContent = q.question;
+    $("qText").textContent = (isMulti(q) ? "【複選】" : "") + q.question;
     $("qOptions").innerHTML = KEYS.map((k) =>
-      `<button class="opt ${quiz.answers[quiz.idx] === k ? "selected" : ""}" data-k="${k}"><span class="key">(${k})</span><span>${esc(q.options[k])}</span></button>`
+      `<button class="opt ${(quiz.answers[quiz.idx] || "").includes(k) ? "selected" : ""}" data-k="${k}"><span class="key">(${k})</span><span>${esc(q.options[k])}</span></button>`
     ).join("");
     document.querySelectorAll(".opt").forEach((b) => (b.onclick = () => choose(b.dataset.k)));
     $("prevBtn").disabled = quiz.idx === 0;
@@ -295,8 +295,15 @@ button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
     ).join("");
     document.querySelectorAll("#qGrid button").forEach((b) => (b.onclick = () => go(+b.dataset.i)));
   }
+  function isMulti(q) { return q.multi || q.answer.length > 1; }
   function choose(k) {
-    quiz.answers[quiz.idx] = quiz.answers[quiz.idx] === k ? null : k;
+    const cur = quiz.answers[quiz.idx] || "";
+    if (isMulti(quiz.qs[quiz.idx])) {
+      const next = (cur.includes(k) ? cur.replace(k, "") : cur + k).split("").sort().join("");
+      quiz.answers[quiz.idx] = next || null;
+    } else {
+      quiz.answers[quiz.idx] = cur === k ? null : k;
+    }
     saveProgress();
     renderQuiz();
   }
@@ -361,7 +368,7 @@ button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
         <div class="q-meta"><span>${i + 1}.　${esc(q.src)}　第 ${q.number} 題</span>
           <span class="tag ${ok ? "right" : "wrong"}">${ok ? "答對" : mine ? "答錯" : "未作答"}</span></div>
         <div class="q-text">${esc(q.question)}</div>
-        ${KEYS.map((k) => `<div class="ro ${k === q.answer ? "correct" : k === mine ? "mine-wrong" : ""}"><span>(${k})</span><span>${esc(q.options[k])}</span></div>`).join("")}
+        ${KEYS.map((k) => `<div class="ro ${q.answer.includes(k) ? "correct" : (mine || "").includes(k) ? "mine-wrong" : ""}"><span>(${k})</span><span>${esc(q.options[k])}</span></div>`).join("")}
         <div class="ans-line">你的答案：<b class="${ok ? "ok" : "bad"}">${mine ? "(" + mine + ")" : "未作答"}</b>　正確答案：<b class="ok">(${q.answer})</b></div>
         ${q.explanation ? `<div class="explain">解析：${esc(q.explanation)}</div>` : ""}
       </div>`).join("") : `<div class="card muted">沒有符合的題目</div>`;
