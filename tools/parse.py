@@ -22,7 +22,7 @@ from PIL import Image
 
 ROOT = Path(__file__).resolve().parent.parent
 WORK = ROOT / "work"
-KEYS = "ABCD"
+KEYS = "ABCDE"
 LOWCONF = float(__import__("os").environ.get("LOWCONF", 20))  # 低於此信心值的中文字列為可疑
 MEANCONF = float(__import__("os").environ.get("MEANCONF", 80))
 
@@ -67,7 +67,8 @@ CJK = re.compile(r"[一-鿿]")
 
 
 def is_answer_row(s):
-    return s.count("(") + s.count("（") >= 4 and len(CJK.findall(s)) < len(s) * 0.5 and len(s) >= 12
+    n = s.count("(") + s.count("（")
+    return (n >= 4 and len(CJK.findall(s)) < len(s) * 0.5 and len(s) >= 12) or n >= 7
 
 
 def body_left(lines):
@@ -116,7 +117,7 @@ def normalize(s):
 
 # 選項標記 (A)(B)(C)(D) 是斜體，常被認錯：(8 ($W (0 (Go GB 0 …，甚至只剩「（」或只剩「0」。
 # 所以主要靠「一定依 A→B→C→D 的順序出現」來挑，字母只當加分參考。
-LETTER_HINT = {"A": "Aa", "B": "Bb", "C": "Cc", "D": "Dd"}
+LETTER_HINT = {"A": "Aa", "B": "Bb", "C": "Cc", "D": "Dd", "E": "EeFf"}
 MARK_TAIL = re.compile(r"(?:[A-Da-dGOoyY人$W]|[0-9](?![0-9])){0,2}[）)]?")
 
 
@@ -153,20 +154,20 @@ def marker_candidates(s):
     return cands
 
 
-def split_options(s):
+def split_options(s, m=4):
     """用動態規劃挑出依序出現的 A<B<C<D 四個標記。回傳 (stem, {A..D}, 信心分數) 或 None。"""
     cands = marker_candidates(s)
     n = len(cands)
-    if n < 4:
+    if n < m:
         return None
     NEG = -1e9
     # dp[j][i]：第 j 個標記（A=0..D=3）落在候選 i 的最佳分數
-    dp = [[NEG] * n for _ in range(4)]
-    back = [[-1] * n for _ in range(4)]
+    dp = [[NEG] * n for _ in range(m)]
+    back = [[-1] * n for _ in range(m)]
     for i in range(n):
         before = s[max(0, cands[i][0] - 2):cands[i][0]]
         dp[0][i] = cands[i][2]["A"] + (1.5 if re.search(r"[？：?:]", before) else 0)
-    for j in range(1, 4):
+    for j in range(1, m):
         k = KEYS[j]
         best, arg = NEG, -1
         for i in range(n):
@@ -177,27 +178,36 @@ def split_options(s):
             if best > NEG and cands[i][2][k] > 0:
                 dp[j][i] = best + cands[i][2][k]
                 back[j][i] = arg
-    end = max(range(n), key=lambda i: dp[3][i])
-    if dp[3][end] <= 0:
+    end = max(range(n), key=lambda i: dp[m - 1][i])
+    if dp[m - 1][end] <= 0:
         return None
-    idx = [0] * 4
-    idx[3] = end
-    for j in range(3, 0, -1):
+    idx = [0] * m
+    idx[m - 1] = end
+    for j in range(m - 1, 0, -1):
         idx[j - 1] = back[j][idx[j]]
     pos = [cands[i] for i in idx]
     stem = s[:pos[0][0]]
     opts = {}
     for j, (p, span, _) in enumerate(pos):
-        e = pos[j + 1][0] if j < 3 else len(s)
+        e = pos[j + 1][0] if j < m - 1 else len(s)
         opts[KEYS[j]] = s[p + span:e]
     # 每個標記滿分 3（有對應字母），A 另有 1.5 題幹結尾加分
-    score = dp[3][end] / 13.5
+    score = dp[m - 1][end] / (3 * m + 1.5)
     return stem, opts, score
 
 
-def clean_option(t):
+RESIDUE = {"A": r"^[人Aa]?", "B": r"^[8Bb]", "C": r"^[GgCc0O]", "D": r"^[0OD]{1,2}", "E": r"^[EeF]"}
+
+
+def clean_option(t, k="A"):
     t = t.strip("，、 ")
+    t = re.sub(r"[（(]+$", "", t)
+    t = re.sub(r"^[@#＠]+[A-Ea-e0-9]?", "", t)
     t = re.sub(r"^[）)yY]+", "", t)
+    t2 = re.sub(RESIDUE[k], "", t, count=1)
+    if t2 and t2 != t and re.match(r"[一-鿿0-9「（]", t2) and not (t[:1] in "ABCDE" and re.match(r"[A-Z]", t[1:2] or "0")):
+        if k != "A" or t[:1] in "人aA":
+            t = t2
     t = re.sub(r"^0(?=[0-9])", "", t)  # 數字不會以 0 開頭，是標記殘渣
     t = re.sub(r"[。．.]+$", "", t)
     return t
@@ -254,9 +264,13 @@ def parse_section(ch, sec):
     # 答案表 = 連續 3 行以上「很多括號、很少中文」的行（避免把「(A)40歲(B)45歲…」這種選項行誤判）
     ans_i, run = len(lines), 0
     for i, l in enumerate(lines):
-        run = run + 1 if is_answer_row(text_of(l)) else 0
+        t = text_of(l)
+        run = run + 1 if is_answer_row(t) else 0
         if run >= 3:
             ans_i = i - 2
+            break
+        if t.count("(") + t.count("（") >= 7:  # 只有兩列的短答案表
+            ans_i = i - (run - 1)
             break
     qlines, after = lines[:ans_i], lines[ans_i:]
 
@@ -272,6 +286,11 @@ def parse_section(ch, sec):
         # 第一題之前的內容（章名、回次橫幅）直接略過
 
     answers, crop = read_answers(after, sec["id"])
+    _mf = WORK / "answers.json"  # 人工看圖抄寫的答案（優先於 OCR）
+    if _mf.exists():
+        _m = json.load(open(_mf, encoding="utf-8")).get(sec["id"])
+        if _m:
+            answers = {i + 1: a for i, a in enumerate(_m)}
     multi = "多重" in sec["title"]
 
     questions, flags = [], []
@@ -279,7 +298,7 @@ def parse_section(ch, sec):
         raw = normalize("".join(b["parts"]))
         confs = [w["conf"] for l in b["lines"] for w in l["words"] if w["conf"] >= 0]
         conf = sum(confs) / len(confs) if confs else 0
-        q = {"id": f"{sec['id']}-{n:02d}", "number": n, "question": raw, "options": {k: "" for k in KEYS},
+        q = {"id": f"{sec['id']}-{n:02d}", "number": n, "question": raw, "options": {k: "" for k in KEYS[:4]},
              "answer": answers.get(n, ""),
              "_pages": sorted({l["page"] for l in b["lines"]}),
              "_box": [min(l["left"] for l in b["lines"]), b["lines"][0]["top"],
@@ -287,11 +306,19 @@ def parse_section(ch, sec):
         if multi:
             q["multi"] = True
         why = []
-        sp = split_options(raw)
+        sp = None
+        if multi:
+            sp = split_options(raw, 5)
+            if sp and sp[2] < 0.5:
+                sp = None
+        if sp is None:
+            sp = split_options(raw, 4)
         if sp:
             stem, opts, score = sp
             q["question"] = clean_stem(stem)
-            q["options"] = {k: clean_option(v) for k, v in opts.items()}
+            q["options"] = {k: clean_option(v, k) for k, v in opts.items()}
+            if multi and "E" not in q["options"] and "E" in (q["answer"] or ""):
+                why.append("答案含 E 但只切出 4 個選項")
             if score < 0.75:
                 why.append(f"選項標記不確定({score:.2f})")
             if any(len(v) == 0 for v in q["options"].values()):

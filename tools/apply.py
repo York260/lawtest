@@ -15,17 +15,17 @@ bank = json.load(open(bank_path, encoding="utf-8"))
 
 problems, chapters = [], []
 for cid in sys.argv[1:]:
-    chap = json.load(open(ROOT / "work" / "draft" / f"{cid}.json", encoding="utf-8"))
+    chap = json.load(open(ROOT / "work" / "final" / f"{cid}.json", encoding="utf-8"))
     for s in chap["sections"]:
         for q in s["questions"]:
             for k in [k for k in q if k.startswith("_")]:
                 del q[k]
             if not q["question"]:
                 problems.append(f"{q['id']} 沒有題目")
-            if set(q["options"]) != set("ABCD") or not all(q["options"].values()):
+            if not set("ABCD") <= set(q["options"]) or not set(q["options"]) <= set("ABCDE") or not all(q["options"].values()):
                 problems.append(f"{q['id']} 選項不完整")
-            if not re.fullmatch(r"[ABCD]{1,4}", q["answer"] or ""):
-                problems.append(f"{q['id']} 答案不是 A–D：{q['answer']!r}")
+            if not re.fullmatch(r"[ABCDE]{1,5}", q["answer"] or ""):
+                problems.append(f"{q['id']} 答案不是 A–E：{q['answer']!r}")
             if not q.get("explanation"):
                 q.pop("explanation", None)
     chapters.append(chap)
