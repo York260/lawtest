@@ -123,6 +123,33 @@ mark.hl { background: var(--hl); color: inherit; border-radius: 3px; padding: 0 
 .tools-row button[aria-pressed="true"] { background: var(--hl); border-color: var(--warn); color: var(--text); }
 .tools-row .hint { color: var(--muted); }
 .tools-row svg { width: 14px; height: 14px; stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.result-tools { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px; margin-bottom: 12px; }
+.at-legend { display: flex; gap: 8px; font-size: 12px; color: var(--muted); margin: 0 0 8px; padding: 0 6px; }
+.at-legend .at-num { width: 2.4em; flex: none; }
+.at-legend .at-mine, .at-legend .at-correct { min-width: 2.6em; flex: none; text-align: center; }
+.at-wrap { column-width: 190px; column-gap: 12px; }
+.at-row {
+  display: flex; align-items: baseline; gap: 8px; padding: 5px 6px; margin-bottom: 2px;
+  break-inside: avoid; border-radius: 6px; font-variant-numeric: tabular-nums; cursor: pointer;
+}
+.at-row:hover { background: var(--accent-soft); }
+.at-row .at-num { width: 2.4em; color: var(--muted); font-size: .85em; flex: none; }
+.at-row .at-mine, .at-row .at-correct { min-width: 2.6em; font-weight: 700; text-align: center; flex: none; }
+.at-row.wrong { background: var(--bad-soft); }
+.at-row.wrong:hover { background: var(--bad-soft); filter: brightness(0.96); }
+.at-row.wrong .at-mine { color: var(--bad); text-decoration: line-through; }
+.at-row.wrong .at-correct { color: var(--ok); }
+.at-row.blank .at-mine { color: var(--muted); }
+.at-row.ok .at-correct { color: var(--ok); }
+.back-to-top {
+  position: fixed; right: 16px; bottom: calc(20px + env(safe-area-inset-bottom, 0px)); z-index: 15;
+  width: 44px; height: 44px; border-radius: 50%; display: flex; align-items: center; justify-content: center;
+  background: var(--card); border: 1px solid var(--line); box-shadow: 0 2px 10px rgba(0,0,0,.18);
+  opacity: 0; transform: translateY(10px); pointer-events: none; transition: opacity .18s, transform .18s;
+}
+.back-to-top.show { opacity: 1; transform: none; pointer-events: auto; }
+.back-to-top svg { width: 20px; height: 20px; stroke: currentColor; fill: none; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
+@media (prefers-reduced-motion: reduce) { .back-to-top { transition: none; } }
 .hist-btn { font-size: 14px; padding: 6px 10px; white-space: nowrap; }
 .hist-item { display: grid; grid-template-columns: 1fr auto; gap: 6px 12px; align-items: center; }
 .hist-item .when { font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; }
@@ -227,16 +254,25 @@ button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
       </div>
     </div>
     <div class="grid" id="resGrid" style="margin-bottom:14px"></div>
-    <div class="filter" id="resFilter">
-      <button data-f="all" class="on">全部</button>
-      <button data-f="wrong">只看錯題</button>
-      <button data-f="right">只看答對</button>
+    <div class="result-tools">
+      <div class="filter" id="resFilter">
+        <button data-f="all" class="on">全部</button>
+        <button data-f="wrong">只看錯題</button>
+        <button data-f="right">只看答對</button>
+      </div>
+      <div class="filter" id="resMode">
+        <button data-m="detail" class="on">詳細列表</button>
+        <button data-m="table">一覽表</button>
+      </div>
     </div>
     <div id="resList"></div>
   </section>
 </main>
 
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
+<button class="back-to-top" id="backToTopBtn" aria-label="回到最頂">
+  <svg viewBox="0 0 24 24"><path d="M12 19V5M5 12l7-7 7 7"/></svg>
+</button>
 <script src="data/questions.js"></script>
 <script>
 (function () {
@@ -593,6 +629,7 @@ button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 
   // ---- 批改結果 ----
   let filter = "all";
+  let viewMode = store.get("resViewMode", "detail");
   function grade() {
     const rec = {
       id: "s" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
@@ -619,9 +656,11 @@ button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
     $("resTotal").textContent = res.length;
     $("resDetail").textContent = `答對 ${right} 題・答錯 ${res.length - right - blank} 題・未作答 ${blank} 題・正確率 ${res.length ? Math.round((right / res.length) * 100) : 0}%`;
     $("retryWrongBtn").disabled = right === res.length;
+    document.querySelectorAll("#resMode button").forEach((b) => b.classList.toggle("on", b.dataset.m === viewMode));
     $("resGrid").innerHTML = res.map((r, i) => `<button data-i="${i}" class="${r.ok ? "right" : "wrong"}">${i + 1}</button>`).join("");
     document.querySelectorAll("#resGrid button").forEach((b) => (b.onclick = () => {
       setFilter("all");
+      setMode("detail");
       document.getElementById("r" + b.dataset.i).scrollIntoView({ behavior: "smooth", block: "start" });
     }));
     setFilter("all");
@@ -637,8 +676,16 @@ button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
     renderResultList();
   }
   document.querySelectorAll("#resFilter button").forEach((b) => (b.onclick = () => setFilter(b.dataset.f)));
+  function setMode(m) {
+    viewMode = m;
+    store.set("resViewMode", m);
+    document.querySelectorAll("#resMode button").forEach((b) => b.classList.toggle("on", b.dataset.m === m));
+    renderResultList();
+  }
+  document.querySelectorAll("#resMode button").forEach((b) => (b.onclick = () => setMode(b.dataset.m)));
   function renderResultList() {
     const items = quiz.result.map((r, i) => ({ ...r, i })).filter((r) => filter === "all" || (filter === "wrong" ? !r.ok : r.ok));
+    if (viewMode === "table") { renderAnswerTable(items); return; }
     $("resList").innerHTML = items.length ? items.map(({ q, mine, ok, i }) => `
       <div class="card review ${ok ? "right" : "wrong"}" id="r${i}">
         <div class="q-meta"><span>${i + 1}.　${esc(q.src)}　第 ${q.number} 題</span>
@@ -649,6 +696,28 @@ button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
         ${q.explanation ? `<div class="explain">解析：${esc(q.explanation)}</div>` : ""}
       </div>`).join("") : `<div class="card muted">沒有符合的題目</div>`;
   }
+  // 一覽表：題號／你的答案／正確答案，方便對照謄到實體考卷；點一列可跳到該題詳解
+  function renderAnswerTable(items) {
+    if (!items.length) { $("resList").innerHTML = `<div class="card muted">沒有符合的題目</div>`; return; }
+    const rows = items.map(({ q, mine, ok, i }) => `
+      <div class="at-row ${ok ? "ok" : mine ? "wrong" : "blank"}" data-i="${i}">
+        <span class="at-num">${i + 1}</span>
+        <span class="at-mine">${mine ? esc(mine) : "－"}</span>
+        <span class="at-correct">${esc(q.answer)}</span>
+      </div>`).join("");
+    $("resList").innerHTML = `<div class="card">
+      <div class="at-legend"><span class="at-num">題號</span><span class="at-mine">你的</span><span class="at-correct">正確</span>
+        <span class="muted">・點一列可看詳解，紅底為答錯</span></div>
+      <div class="at-wrap">${rows}</div>
+    </div>`;
+  }
+  // 一覽表點列 → 切回詳細列表並捲到該題（監聽掛在容器上，重新渲染後仍有效）
+  $("resList").addEventListener("click", (e) => {
+    const row = e.target.closest(".at-row");
+    if (!row) return;
+    setMode("detail");
+    document.getElementById("r" + row.dataset.i)?.scrollIntoView({ behavior: "smooth", block: "start" });
+  });
   $("retryWrongBtn").onclick = () => {
     const wrong = quiz.result.filter((r) => !r.ok).map((r) => r.q);
     const marks = quiz.marks;
@@ -747,6 +816,13 @@ button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
   function openHistory() { renderHistory(); show("viewHistory"); }
   $("historyBtn").onclick = openHistory;
   $("toHistBtn").onclick = openHistory;
+
+  // ---- 回到最頂 ----
+  const backToTop = $("backToTopBtn");
+  function updateBackToTop() { backToTop.classList.toggle("show", window.scrollY >= 400); }
+  window.addEventListener("scroll", updateBackToTop, { passive: true });
+  backToTop.onclick = () => window.scrollTo({ top: 0, behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" });
+  updateBackToTop();
 
   renderSelect();
   offerResume();
