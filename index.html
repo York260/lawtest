@@ -108,8 +108,11 @@ h2 { font-size: 1.15em; margin: 0 0 10px; }
 .opt.elim { border-color: var(--elim-line); background: var(--elim-bg); }
 .opt.elim.selected { box-shadow: inset 0 0 0 1px var(--accent); border-color: var(--accent); }
 mark.hl { background: var(--hl); color: inherit; border-radius: 3px; padding: 0 1px; }
-.hl-on .opt, .hl-on .q-text { -webkit-user-select: text; user-select: text; cursor: text; }
-.hl-on mark.hl { cursor: pointer; }
+.hl-on .q-text, .hl-on .opt { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; touch-action: none; cursor: crosshair; }
+.hl-on .opt { cursor: crosshair; }
+.ch.on { background: var(--hl); }
+.ch.pre { background: var(--hl); opacity: .75; }
+.ch.erase { background: transparent; text-decoration: line-through; text-decoration-color: var(--muted); }
 .tools-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: -4px 0 12px; font-size: 13px; }
 .tools-row button { font-size: 13px; padding: 4px 10px; display: inline-flex; align-items: center; gap: 4px; }
 .tools-row button[aria-pressed="true"] { background: var(--hl); border-color: var(--warn); color: var(--text); }
@@ -354,9 +357,10 @@ button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
     $("qProgress").style.width = ((quiz.idx + 1) / n) * 100 + "%";
     const mk = quiz.marks[q.id] || {};
     const el = quiz.elim[q.id] || "";
-    $("qText").innerHTML = (isMulti(q) ? "【複選】" : "") + `<span class="hl-target" data-f="q">${markHTML(q.question, mk.q)}</span>`;
+    const txt = (t, f) => (hlMode ? charHTML(t, mk[f]) : markHTML(t, mk[f]));
+    $("qText").innerHTML = (isMulti(q) ? "【複選】" : "") + `<span class="hl-target" data-f="q">${txt(q.question, "q")}</span>`;
     $("qOptions").innerHTML = optKeys(q).map((k) =>
-      `<button class="opt ${(quiz.answers[quiz.idx] || "").includes(k) ? "selected" : ""} ${el.includes(k) ? "elim" : ""}" data-k="${k}"><span class="key">(${k})</span><span class="hl-target" data-f="${k}">${markHTML(q.options[k], mk[k])}</span></button>`
+      `<button class="opt ${(quiz.answers[quiz.idx] || "").includes(k) ? "selected" : ""} ${el.includes(k) ? "elim" : ""}" data-k="${k}"><span class="key">(${k})</span><span class="hl-target" data-f="${k}">${txt(q.options[k], k)}</span></button>`
     ).join("");
     document.querySelectorAll(".opt").forEach(bindOption);
     $("hlClear").disabled = !quiz.marks[q.id] && !quiz.elim[q.id];
@@ -434,42 +438,23 @@ button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
     });
     return out;
   }
-  function offsetIn(el, node, off) {
-    const r = document.createRange();
-    r.setStart(el, 0);
-    r.setEnd(node, off);
-    return r.toString().length;
+  // 螢光筆開啟時把文字拆成一個個字，手指滑過的字就畫上螢光（不用瀏覽器的文字選取）
+  function charHTML(text, ranges) {
+    const on = new Array(text.length).fill(false);
+    (ranges || []).forEach(([x, y]) => { for (let i = x; i < y; i++) on[i] = true; });
+    return text.split("").map((c, i) => `<span class="ch${on[i] ? " on" : ""}" data-i="${i}">${esc(c)}</span>`).join("");
   }
   function setMarks(qid, mk) {
     Object.keys(mk).forEach((f) => { if (!mk[f].length) delete mk[f]; });
     if (Object.keys(mk).length) quiz.marks[qid] = mk; else delete quiz.marks[qid];
     saveProgress();
   }
-  function applySelection() {
-    const sel = window.getSelection();
-    if (!hlMode || !sel || sel.isCollapsed || !sel.rangeCount) return;
-    const range = sel.getRangeAt(0);
-    const q = quiz.qs[quiz.idx];
-    const mk = JSON.parse(JSON.stringify(quiz.marks[q.id] || {}));
-    let changed = false;
-    document.querySelectorAll("#viewQuiz .hl-target").forEach((el) => {
-      if (!range.intersectsNode(el)) return;
-      const len = el.textContent.length;
-      const a = el.contains(range.startContainer) ? offsetIn(el, range.startContainer, range.startOffset) : 0;
-      const b = el.contains(range.endContainer) ? offsetIn(el, range.endContainer, range.endOffset) : len;
-      if (b > a) {
-        mk[el.dataset.f] = mergeRanges([...(mk[el.dataset.f] || []), [a, b]]);
-        changed = true;
-      }
-    });
-    sel.removeAllRanges();
-    if (changed) { setMarks(q.id, mk); renderQuiz(); }
-  }
   function setHlMode(on) {
     hlMode = on;
     $("hlBtn").setAttribute("aria-pressed", on ? "true" : "false");
     $("viewQuiz").classList.toggle("hl-on", on);
-    $("toolHint").textContent = on ? "選取文字即可畫上螢光；點螢光可擦掉" : "長按選項可標記刪去";
+    $("toolHint").textContent = on ? "手指滑過文字畫螢光；點一下螢光可擦掉" : "長按選項可標記刪去";
+    renderQuiz();
   }
   $("hlBtn").onclick = () => setHlMode(!hlMode);
   $("hlClear").onclick = () => {
@@ -479,31 +464,60 @@ button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
     saveProgress();
     renderQuiz();
   };
-  // 選取結束（滑鼠放開、手指離開、調整選取把手後）再畫上
-  let selTimer = null;
-  ["mouseup", "touchend"].forEach((ev) => $("viewQuiz").addEventListener(ev, () => {
-    clearTimeout(selTimer);
-    selTimer = setTimeout(applySelection, ev === "touchend" ? 350 : 0);
-  }));
-  document.addEventListener("selectionchange", () => {
+
+  // 畫的動作：按下的字 → 滑到的字（同一段文字內），放開時存起來
+  let paint = null; // { target, f, start, end, erase }
+  const chAt = (x, y) => {
+    const el = document.elementFromPoint(x, y);
+    return el && el.classList.contains("ch") ? el : null;
+  };
+  function paintPreview() {
+    const lo = Math.min(paint.start, paint.end), hi = Math.max(paint.start, paint.end);
+    paint.target.querySelectorAll(".ch").forEach((c) => {
+      const i = +c.dataset.i, inside = i >= lo && i <= hi;
+      c.classList.toggle("pre", inside && !paint.erase);
+      c.classList.toggle("erase", inside && paint.erase);
+    });
+  }
+  $("viewQuiz").addEventListener("pointerdown", (e) => {
     if (!hlMode) return;
-    clearTimeout(selTimer);
-    selTimer = setTimeout(applySelection, 700);
+    const c = chAt(e.clientX, e.clientY);
+    if (!c) return;
+    e.preventDefault();
+    const target = c.closest(".hl-target");
+    // 從已經畫過的字開始滑 = 擦掉
+    paint = { target, f: target.dataset.f, start: +c.dataset.i, end: +c.dataset.i, erase: c.classList.contains("on"), id: e.pointerId };
+    try { $("viewQuiz").setPointerCapture(e.pointerId); } catch (err) {}
+    paintPreview();
   });
-  // 螢光筆模式下點一下螢光 = 擦掉那一段
-  $("viewQuiz").addEventListener("click", (e) => {
-    const m = e.target.closest("mark.hl");
-    if (!hlMode || !m) return;
-    const sel = window.getSelection();
-    if (sel && !sel.isCollapsed) return;
-    const f = m.closest(".hl-target").dataset.f;
+  $("viewQuiz").addEventListener("pointermove", (e) => {
+    if (!paint || e.pointerId !== paint.id) return;
+    e.preventDefault();
+    const c = chAt(e.clientX, e.clientY);
+    if (c && c.closest(".hl-target") === paint.target && +c.dataset.i !== paint.end) {
+      paint.end = +c.dataset.i;
+      paintPreview();
+    }
+  });
+  function endPaint(e) {
+    if (!paint || e.pointerId !== paint.id) return;
     const q = quiz.qs[quiz.idx];
     const mk = JSON.parse(JSON.stringify(quiz.marks[q.id] || {}));
-    mk[f].splice(+m.dataset.i, 1);
+    const lo = Math.min(paint.start, paint.end), hi = Math.max(paint.start, paint.end) + 1;
+    const cur = mk[paint.f] || [];
+    if (paint.erase) {
+      // 只點一下 → 擦掉整段螢光；滑過 → 擦掉滑過的字
+      const [x, y] = lo + 1 === hi ? cur.find(([a, b]) => a <= lo && lo < b) || [lo, hi] : [lo, hi];
+      mk[paint.f] = mergeRanges(cur.flatMap(([a, b]) => [[a, Math.min(b, x)], [Math.max(a, y), b]]));
+    } else {
+      mk[paint.f] = mergeRanges([...cur, [lo, hi]]);
+    }
+    paint = null;
     setMarks(q.id, mk);
     renderQuiz();
-    e.stopPropagation();
-  }, true);
+  }
+  $("viewQuiz").addEventListener("pointerup", endPaint);
+  $("viewQuiz").addEventListener("pointercancel", (e) => { if (paint && e.pointerId === paint.id) { paint = null; renderQuiz(); } });
 
   // ---- 長按選項 = 刪去法 ----
   function setElim(qid, v) {
