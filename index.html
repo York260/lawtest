@@ -108,7 +108,12 @@ h2 { font-size: 1.15em; margin: 0 0 10px; }
 .opt.elim { border-color: var(--elim-line); background: var(--elim-bg); }
 .opt.elim.selected { box-shadow: inset 0 0 0 1px var(--accent); border-color: var(--accent); }
 mark.hl { background: var(--hl); color: inherit; border-radius: 3px; padding: 0 1px; }
-.hl-on .q-text, .hl-on .opt { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; touch-action: none; cursor: crosshair; }
+.hl-on .q-text, .hl-on .opt { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; touch-action: pan-y; cursor: crosshair; }
+.toast { position: fixed; left: 50%; bottom: calc(24px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); z-index: 20;
+  background: var(--text); color: var(--bg); padding: 8px 16px; border-radius: 20px; font-size: 14px; pointer-events: none;
+  opacity: 0; transition: opacity .2s; }
+.toast.show { opacity: .92; }
+@media (prefers-reduced-motion: reduce) { .toast { transition: none; } }
 .hl-on .opt { cursor: crosshair; }
 .ch.on { background: var(--hl); }
 .ch.pre { background: var(--hl); opacity: .75; }
@@ -176,7 +181,7 @@ button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
       <div class="tools-row">
         <button id="hlBtn" aria-pressed="false"><svg viewBox="0 0 24 24"><path d="M9 11l-6 6v3h9l3-3"/><path d="M22 12l-4.6 4.6a2 2 0 0 1-2.8 0l-5.2-5.2a2 2 0 0 1 0-2.8L14 4"/></svg>螢光筆</button>
         <button id="hlClear">清除本題標記</button>
-        <span class="hint" id="toolHint">長按選項可標記刪去</span>
+        <span class="hint" id="toolHint">長按選項刪去・點空白處開螢光筆</span>
       </div>
       <div class="q-text" id="qText"></div>
       <div id="qOptions"></div>
@@ -231,6 +236,7 @@ button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
   </section>
 </main>
 
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
 <script src="data/questions.js"></script>
 <script>
 (function () {
@@ -453,10 +459,44 @@ button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
     hlMode = on;
     $("hlBtn").setAttribute("aria-pressed", on ? "true" : "false");
     $("viewQuiz").classList.toggle("hl-on", on);
-    $("toolHint").textContent = on ? "手指滑過文字畫螢光；點一下螢光可擦掉" : "長按選項可標記刪去";
+    $("toolHint").textContent = on ? "左右滑過文字畫螢光・點螢光擦掉・點空白處關閉" : "長按選項刪去・點空白處開螢光筆";
     renderQuiz();
   }
-  $("hlBtn").onclick = () => setHlMode(!hlMode);
+  let toastTimer = null;
+  function toast(msg) {
+    $("toast").textContent = msg;
+    $("toast").classList.add("show");
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => $("toast").classList.remove("show"), 1200);
+  }
+  // 作答畫面點空白處 = 開／關螢光筆（點到文字、選項、按鈕、題號格不算）
+  // 用手指實際按下的位置判斷；手機瀏覽器會把「點在按鈕附近」自動算成點按鈕，所以之後那一下 click 要攔掉
+  const NOT_BLANK = "button, .opt, .ch, .q-text, .grid, .tools-row, .nav, .confirm-box, .q-meta, .progress, #answeredInfo, input, label, a, mark";
+  let tapStart = null, swallowClickUntil = 0;
+  document.addEventListener("pointerdown", (e) => {
+    tapStart = null;
+    const hit = document.elementFromPoint(e.clientX, e.clientY); // 手指正下方的元素（不受瀏覽器自動校正影響）
+    if ($("viewQuiz").classList.contains("hidden") || !hit || !hit.closest("main") || hit.closest(NOT_BLANK)) return;
+    if (e.pointerType === "mouse" && e.button !== 0) return;
+    tapStart = { x: e.clientX, y: e.clientY, t: Date.now(), id: e.pointerId };
+  }, true);
+  document.addEventListener("pointerup", (e) => {
+    const st = tapStart;
+    tapStart = null;
+    if (!st || st.id !== e.pointerId || Date.now() - st.t > 400 || Math.hypot(e.clientX - st.x, e.clientY - st.y) > 10) return;
+    swallowClickUntil = Date.now() + 600;
+    setHlMode(!hlMode);
+    toast(hlMode ? "螢光筆：開" : "螢光筆：關");
+  }, true);
+  document.addEventListener("pointercancel", () => { tapStart = null; }, true);
+  document.addEventListener("click", (e) => {
+    if (Date.now() < swallowClickUntil) {
+      swallowClickUntil = 0;
+      e.preventDefault();
+      e.stopPropagation();
+    }
+  }, true);
+  $("hlBtn").onclick = () => { setHlMode(!hlMode); toast(hlMode ? "螢光筆：開" : "螢光筆：關"); };
   $("hlClear").onclick = () => {
     const qid = quiz.qs[quiz.idx].id;
     delete quiz.marks[qid];
