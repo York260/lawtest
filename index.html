@@ -459,7 +459,7 @@ button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
     hlMode = on;
     $("hlBtn").setAttribute("aria-pressed", on ? "true" : "false");
     $("viewQuiz").classList.toggle("hl-on", on);
-    $("toolHint").textContent = on ? "左右滑過文字畫螢光・點螢光擦掉・點選項作答" : "長按選項刪去・點空白處開螢光筆";
+    $("toolHint").textContent = on ? "左右滑過文字畫螢光・點螢光擦掉・點空白處關閉" : "長按選項刪去・點空白處開螢光筆";
     renderQuiz();
   }
   let toastTimer = null;
@@ -526,7 +526,7 @@ button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
     e.preventDefault();
     const target = c.closest(".hl-target");
     // 從已經畫過的字開始滑 = 擦掉
-    paint = { target, f: target.dataset.f, start: +c.dataset.i, end: +c.dataset.i, erase: c.classList.contains("on"), id: e.pointerId, t: Date.now() };
+    paint = { target, f: target.dataset.f, start: +c.dataset.i, end: +c.dataset.i, erase: c.classList.contains("on"), id: e.pointerId };
     try { $("viewQuiz").setPointerCapture(e.pointerId); } catch (err) {}
     paintPreview();
   });
@@ -545,16 +545,6 @@ button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
     const mk = JSON.parse(JSON.stringify(quiz.marks[q.id] || {}));
     const lo = Math.min(paint.start, paint.end), hi = Math.max(paint.start, paint.end) + 1;
     const cur = mk[paint.f] || [];
-    const tap = paint.start === paint.end && Date.now() - paint.t < 500;
-    const f = paint.f;
-    paintHandledAt = Date.now();
-    if (paint.cancelled) { paint = null; renderQuiz(); return; } // 已被長按刪去接手
-    if (tap && !paint.erase) {
-      // 點一下沒畫過的字：在選項上 = 作答；在題目上 = 什麼都不做
-      paint = null;
-      if (f !== "q") choose(f); else renderQuiz();
-      return;
-    }
     if (paint.erase) {
       // 只點一下 → 擦掉整段螢光；滑過 → 擦掉滑過的字
       const [x, y] = lo + 1 === hi ? cur.find(([a, b]) => a <= lo && lo < b) || [lo, hi] : [lo, hi];
@@ -566,7 +556,6 @@ button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
     setMarks(q.id, mk);
     renderQuiz();
   }
-  let paintHandledAt = 0; // 剛處理過畫筆動作，接著的 click 不再重複作答
   $("viewQuiz").addEventListener("pointerup", endPaint);
   $("viewQuiz").addEventListener("pointercancel", (e) => { if (paint && e.pointerId === paint.id) { paint = null; renderQuiz(); } });
 
@@ -581,12 +570,10 @@ button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
     let timer = null, longPressed = false, sx = 0, sy = 0;
     const cancel = () => { clearTimeout(timer); timer = null; };
     b.addEventListener("pointerdown", (e) => {
-      if (e.pointerType === "mouse" && e.button !== 0) return;
+      if (hlMode || (e.pointerType === "mouse" && e.button !== 0)) return;
       longPressed = false;
       sx = e.clientX; sy = e.clientY;
       timer = setTimeout(() => {
-        if (paint && paint.start !== paint.end) return; // 正在畫螢光，不算長按
-        if (paint) paint.cancelled = true;
         longPressed = true;
         const qid = quiz.qs[quiz.idx].id;
         const cur = quiz.elim[qid] || "";
@@ -599,8 +586,7 @@ button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
     ["pointerup", "pointerleave", "pointercancel"].forEach((ev) => b.addEventListener(ev, cancel));
     b.addEventListener("contextmenu", (e) => e.preventDefault());
     b.addEventListener("click", () => {
-      if (longPressed) { longPressed = false; return; }
-      if (Date.now() - paintHandledAt < 300) return; // 點在字上已由畫筆處理（作答或擦螢光）
+      if (hlMode || longPressed) { longPressed = false; return; }
       choose(k);
     });
   }
