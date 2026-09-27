@@ -92,6 +92,16 @@ h2 { font-size: 1.15em; margin: 0 0 10px; }
 .ans-line b.bad { color: var(--bad); }
 .explain { margin-top: 8px; padding: 8px 12px; border-radius: 8px; background: var(--accent-soft); font-size: .9em; }
 .hidden { display: none !important; }
+.hist-btn { font-size: 14px; padding: 6px 10px; white-space: nowrap; }
+.hist-item { display: grid; grid-template-columns: 1fr auto; gap: 6px 12px; align-items: center; }
+.hist-item .when { font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.hist-item .label { font-weight: 600; overflow-wrap: anywhere; }
+.hist-item .pct { font-size: 1.3em; font-weight: 700; text-align: right; font-variant-numeric: tabular-nums; }
+.hist-item .pct small { display: block; font-size: 12px; font-weight: 400; color: var(--muted); }
+.hist-item .acts { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 8px; }
+.hist-item .del-confirm { color: var(--bad); font-size: 14px; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.pct.good { color: var(--ok); } .pct.bad { color: var(--bad); }
+.hist-note { font-size: 13px; color: var(--muted); margin: 0 0 12px; }
 [hidden] { display: none !important; }
 .confirm-box { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; justify-content: space-between; margin-top: 12px; padding: 10px 12px; border-radius: 8px; background: var(--bad-soft); color: var(--bad); font-size: 15px; }
 button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
@@ -103,6 +113,7 @@ button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 <header>
   <div class="bar">
     <h1 id="homeLink" title="回到章節選擇">警察法規刷題</h1>
+    <button id="historyBtn" class="hist-btn">答案卷紀錄</button>
     <div class="font-ctrl" aria-label="文字大小">
       <button id="fontDown" aria-label="縮小文字">A−</button>
       <span id="fontVal">18</span>
@@ -155,15 +166,26 @@ button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
     </div>
   </section>
 
+  <!-- 答案卷紀錄 -->
+  <section id="viewHistory" class="hidden">
+    <div class="card">
+      <h2>答案卷紀錄</h2>
+      <p class="hist-note" id="histMode">讀取中…</p>
+      <div id="histList"></div>
+    </div>
+  </section>
+
   <!-- 結果 -->
   <section id="viewResult" class="hidden">
     <div class="card score">
+      <div class="muted small" id="resWhen"></div>
       <div class="muted small" id="resSource"></div>
       <div class="big"><span id="resRight"></span><span class="of"> / <span id="resTotal"></span> 題</span></div>
       <div class="muted small" id="resDetail"></div>
       <div class="actions" style="justify-content:center;margin-top:12px">
         <button id="retryWrongBtn">只重做錯題</button>
         <button id="retryAllBtn">整回重做</button>
+        <button id="toHistBtn">答案卷紀錄</button>
         <button class="primary" id="backBtn">回章節選擇</button>
       </div>
     </div>
@@ -264,7 +286,7 @@ button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
   // ---- 作答 ----
   let quiz = null; // { qs, answers, idx, label }
   function show(view) {
-    ["viewSelect", "viewQuiz", "viewResult"].forEach((v) => $(v).classList.toggle("hidden", v !== view));
+    ["viewSelect", "viewQuiz", "viewResult", "viewHistory"].forEach((v) => $(v).classList.toggle("hidden", v !== view));
     window.scrollTo(0, 0);
   }
   function startQuiz(qs, label) {
@@ -339,15 +361,29 @@ button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
   // ---- 批改結果 ----
   let filter = "all";
   function grade() {
+    const rec = {
+      id: "s" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
+      ts: Date.now(),
+      label: quiz.label,
+      qids: quiz.qs.map((q) => q.id),
+      mine: quiz.answers.map((a) => a || ""),
+    };
     const res = quiz.qs.map((q, i) => ({ q, mine: quiz.answers[i], ok: quiz.answers[i] === q.answer }));
+    rec.right = res.filter((r) => r.ok).length;
+    rec.total = res.length;
+    store.set("progress", null);
+    History.add(rec);
+    showResult(res, quiz.label, rec.ts);
+  }
+  function showResult(res, label, ts) {
     const right = res.filter((r) => r.ok).length;
     const blank = res.filter((r) => !r.mine).length;
     quiz.result = res;
-    store.set("progress", null);
-    $("resSource").textContent = quiz.label;
+    $("resWhen").textContent = ts ? "作答時間：" + fmtTime(ts) : "";
+    $("resSource").textContent = label;
     $("resRight").textContent = right;
     $("resTotal").textContent = res.length;
-    $("resDetail").textContent = `答對 ${right} 題・答錯 ${res.length - right - blank} 題・未作答 ${blank} 題・正確率 ${Math.round((right / res.length) * 100)}%`;
+    $("resDetail").textContent = `答對 ${right} 題・答錯 ${res.length - right - blank} 題・未作答 ${blank} 題・正確率 ${res.length ? Math.round((right / res.length) * 100) : 0}%`;
     $("retryWrongBtn").disabled = right === res.length;
     $("resGrid").innerHTML = res.map((r, i) => `<button data-i="${i}" class="${r.ok ? "right" : "wrong"}">${i + 1}</button>`).join("");
     document.querySelectorAll("#resGrid button").forEach((b) => (b.onclick = () => {
@@ -356,6 +392,10 @@ button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
     }));
     setFilter("all");
     show("viewResult");
+  }
+  function fmtTime(ts) {
+    const d = new Date(ts), z = (n) => String(n).padStart(2, "0");
+    return `${d.getFullYear()}/${z(d.getMonth() + 1)}/${z(d.getDate())} ${z(d.getHours())}:${z(d.getMinutes())}`;
   }
   function setFilter(f) {
     filter = f;
@@ -417,7 +457,97 @@ button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
     $("discardBtn").onclick = () => { store.set("progress", null); card.remove(); };
   }
 
+  // ---- 答案卷紀錄 ----
+  // 登入 claude.ai 開啟時存到帳號（跨裝置、只有自己看得到）；否則存在這個瀏覽器。
+  const History = {
+    list: store.get("history", []),
+    col: null,
+    ready: false,
+    saveLocal() {
+      // 瀏覽器空間有限，只留最近 60 份
+      this.list.sort((a, b) => b.ts - a.ts);
+      store.set("history", this.list.slice(0, 60));
+    },
+    add(rec) {
+      this.list.unshift(rec);
+      this.saveLocal();
+      if (this.col) this.col.doc(rec.id).set(rec).catch(() => {});
+    },
+    remove(id) {
+      this.list = this.list.filter((r) => r.id !== id);
+      this.saveLocal();
+      if (this.col) this.col.doc(id).delete().catch(() => {});
+    },
+    async connect() {
+      try {
+        if (!window.claude || !window.claude.use) return;
+        const [db, user] = await Promise.all([window.claude.use("db"), window.claude.use("user")]);
+        if (!db || !user) return;
+        const uid = await user.id();
+        if (!uid) return;
+        const col = db.collection("data/users/" + uid);
+        const snap = await col.orderBy("ts", "desc").limit(500).get();
+        const remote = snap.docs.map((d) => d.data()).filter((r) => r && r.qids);
+        const have = new Set(remote.map((r) => r.id));
+        // 之前只存在瀏覽器的紀錄，補傳到帳號
+        for (const r of this.list) if (!have.has(r.id)) await col.doc(r.id).set(r).catch(() => {});
+        const byRid = new Map([...this.list, ...remote].map((r) => [r.id, r]));
+        this.list = [...byRid.values()].sort((a, b) => b.ts - a.ts);
+        this.col = col;
+        this.saveLocal();
+      } catch (e) {
+        this.col = null;
+      } finally {
+        this.ready = true;
+        if (!$("viewHistory").classList.contains("hidden")) renderHistory();
+      }
+    },
+  };
+
+  function renderHistory() {
+    $("histMode").textContent = History.col
+      ? "紀錄已存到你的 claude.ai 帳號，換裝置登入也看得到，只有你自己看得到。"
+      : History.ready
+        ? "紀錄存在這個瀏覽器裡（換瀏覽器或清除網站資料就會不見），最多保留 60 份。"
+        : "正在連線到你的帳號…";
+    const list = History.list.slice().sort((a, b) => b.ts - a.ts);
+    if (!list.length) {
+      $("histList").innerHTML = `<p class="muted">還沒有答案卷。交卷批改後會自動存在這裡。</p>`;
+      return;
+    }
+    $("histList").innerHTML = list.map((r) => {
+      const pct = r.total ? Math.round((r.right / r.total) * 100) : 0;
+      return `<div class="card hist-item" data-id="${esc(r.id)}" style="margin:10px 0 0">
+        <div><div class="when">${fmtTime(r.ts)}</div><div class="label">${esc(r.label)}</div></div>
+        <div class="pct ${pct >= 80 ? "good" : pct < 60 ? "bad" : ""}">${pct}%<small>${r.right} / ${r.total} 題</small></div>
+        <div class="acts">
+          <button class="primary" data-act="view">查看答案卷</button>
+          <button data-act="del">刪除</button>
+        </div></div>`;
+    }).join("");
+    document.querySelectorAll(".hist-item").forEach((el) => {
+      const rec = History.list.find((r) => r.id === el.dataset.id);
+      el.querySelector('[data-act="view"]').onclick = () => openRecord(rec);
+      el.querySelector('[data-act="del"]').onclick = (e) => {
+        const acts = el.querySelector(".acts");
+        acts.innerHTML = `<span class="del-confirm">確定刪除這份答案卷？<button data-act="no">取消</button><button class="primary" data-act="yes">刪除</button></span>`;
+        acts.querySelector('[data-act="no"]').onclick = renderHistory;
+        acts.querySelector('[data-act="yes"]').onclick = () => { History.remove(rec.id); renderHistory(); };
+      };
+    });
+  }
+  function openRecord(rec) {
+    // 題庫之後若有更正，這裡以目前題庫的題目與答案重新批改
+    const pairs = rec.qids.map((id, i) => ({ q: byId[id], mine: rec.mine[i] || null })).filter((p) => p.q);
+    quiz = { qs: pairs.map((p) => p.q), answers: pairs.map((p) => p.mine), idx: 0, label: rec.label };
+    showResult(pairs.map((p) => ({ ...p, ok: p.mine === p.q.answer })), rec.label, rec.ts);
+  }
+  function openHistory() { renderHistory(); show("viewHistory"); }
+  $("historyBtn").onclick = openHistory;
+  $("toHistBtn").onclick = openHistory;
+
   renderSelect();
   offerResume();
+  History.connect();
 })();
 </script>
