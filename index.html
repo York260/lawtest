@@ -6,6 +6,7 @@
   --bg: #f6f7f9; --card: #fff; --text: #1d232b; --muted: #66707c; --line: #dde1e6;
   --accent: #2458c6; --accent-soft: #e8eefb; --ok: #1a7f45; --ok-soft: #e4f4ea;
   --bad: #c22f2f; --bad-soft: #fbe8e8; --warn: #9a6400;
+  --hl: #fff08a; --elim-line: #e8a0a0; --elim-bg: #fdf3f3;
   --fs: 18px;
 }
 @media (prefers-color-scheme: dark) {
@@ -13,12 +14,14 @@
     --bg: #14171b; --card: #1d2127; --text: #e6e9ed; --muted: #9aa3ad; --line: #323840;
     --accent: #7ea3f2; --accent-soft: #24304a; --ok: #5cc98a; --ok-soft: #1c3527;
     --bad: #f07b7b; --bad-soft: #402325; --warn: #e0b050; color-scheme: dark;
+    --hl: #6b5d12; --elim-line: #8f4d4d; --elim-bg: #2a1f21;
   }
 }
   :root[data-theme="dark"] {
   color-scheme: dark; --bg: #14171b; --card: #1d2127; --text: #e6e9ed; --muted: #9aa3ad; --line: #323840;
   --accent: #7ea3f2; --accent-soft: #24304a; --ok: #5cc98a; --ok-soft: #1c3527;
   --bad: #f07b7b; --bad-soft: #402325; --warn: #e0b050;
+  --hl: #6b5d12; --elim-line: #8f4d4d; --elim-bg: #2a1f21;
 }
 * { box-sizing: border-box; }
 body {
@@ -92,6 +95,26 @@ h2 { font-size: 1.15em; margin: 0 0 10px; }
 .ans-line b.bad { color: var(--bad); }
 .explain { margin-top: 8px; padding: 8px 12px; border-radius: 8px; background: var(--accent-soft); font-size: .9em; }
 .hidden { display: none !important; }
+.bar h1 { min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.icon-btn { width: 36px; height: 32px; padding: 0; display: inline-flex; align-items: center; justify-content: center; }
+.icon-btn svg { width: 18px; height: 18px; stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+@media (max-width: 480px) {
+  .bar { gap: 8px; }
+  .font-ctrl span { display: none; }
+  .hist-btn .long { display: none; }
+}
+@media (min-width: 481px) { .hist-btn .short { display: none; } }
+.opt { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; transition: background-color .15s, border-color .15s; }
+.opt.elim { border-color: var(--elim-line); background: var(--elim-bg); }
+.opt.elim.selected { box-shadow: inset 0 0 0 1px var(--accent); border-color: var(--accent); }
+mark.hl { background: var(--hl); color: inherit; border-radius: 3px; padding: 0 1px; }
+.hl-on .opt, .hl-on .q-text { -webkit-user-select: text; user-select: text; cursor: text; }
+.hl-on mark.hl { cursor: pointer; }
+.tools-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: -4px 0 12px; font-size: 13px; }
+.tools-row button { font-size: 13px; padding: 4px 10px; display: inline-flex; align-items: center; gap: 4px; }
+.tools-row button[aria-pressed="true"] { background: var(--hl); border-color: var(--warn); color: var(--text); }
+.tools-row .hint { color: var(--muted); }
+.tools-row svg { width: 14px; height: 14px; stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
 .hist-btn { font-size: 14px; padding: 6px 10px; white-space: nowrap; }
 .hist-item { display: grid; grid-template-columns: 1fr auto; gap: 6px 12px; align-items: center; }
 .hist-item .when { font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; }
@@ -113,7 +136,8 @@ button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 <header>
   <div class="bar">
     <h1 id="homeLink" title="回到章節選擇">警察法規刷題</h1>
-    <button id="historyBtn" class="hist-btn">答案卷紀錄</button>
+    <button id="historyBtn" class="hist-btn"><span class="long">答案卷紀錄</span><span class="short">紀錄</span></button>
+    <button id="themeBtn" class="icon-btn" aria-label="切換白天／夜間模式" title="切換白天／夜間模式"></button>
     <div class="font-ctrl" aria-label="文字大小">
       <button id="fontDown" aria-label="縮小文字">A−</button>
       <span id="fontVal">18</span>
@@ -146,6 +170,11 @@ button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
     <div class="card">
       <div class="q-meta"><span id="qSource"></span><span id="qCounter"></span></div>
       <div class="progress"><div id="qProgress"></div></div>
+      <div class="tools-row">
+        <button id="hlBtn" aria-pressed="false"><svg viewBox="0 0 24 24"><path d="M9 11l-6 6v3h9l3-3"/><path d="M22 12l-4.6 4.6a2 2 0 0 1-2.8 0l-5.2-5.2a2 2 0 0 1 0-2.8L14 4"/></svg>螢光筆</button>
+        <button id="hlClear">清除本題標記</button>
+        <span class="hint" id="toolHint">長按選項可標記刪去</span>
+      </div>
       <div class="q-text" id="qText"></div>
       <div id="qOptions"></div>
       <div class="nav">
@@ -225,6 +254,26 @@ button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
   $("fontUp").onclick = () => { fs = Math.min(30, fs + 2); applyFont(); };
   applyFont();
 
+  // ---- 白天／夜間模式 ----
+  const SUN = '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>';
+  const MOON = '<svg viewBox="0 0 24 24"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>';
+  const darkMQ = window.matchMedia ? window.matchMedia("(prefers-color-scheme: dark)") : null;
+  let theme = store.get("theme", null); // null = 跟隨系統
+  function effectiveTheme() { return theme || (darkMQ && darkMQ.matches ? "dark" : "light"); }
+  function applyTheme() {
+    if (theme) document.documentElement.setAttribute("data-theme", theme);
+    const dark = effectiveTheme() === "dark";
+    $("themeBtn").innerHTML = dark ? SUN : MOON;
+    $("themeBtn").title = $("themeBtn").ariaLabel = dark ? "切換為白天模式" : "切換為夜間模式";
+  }
+  $("themeBtn").onclick = () => {
+    theme = effectiveTheme() === "dark" ? "light" : "dark";
+    store.set("theme", theme);
+    applyTheme();
+  };
+  if (darkMQ && darkMQ.addEventListener) darkMQ.addEventListener("change", () => { if (!theme) applyTheme(); });
+  applyTheme();
+
   // ---- 章節選擇 ----
   const sectionMap = {};
   BANK.chapters.forEach((ch) => ch.sections.forEach((s) => { sectionMap[s.id] = { ch, s }; }));
@@ -290,12 +339,12 @@ button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
     window.scrollTo(0, 0);
   }
   function startQuiz(qs, label) {
-    quiz = { qs, answers: new Array(qs.length).fill(null), idx: 0, label };
+    quiz = { qs, answers: new Array(qs.length).fill(null), idx: 0, label, marks: {}, elim: {} };
     saveProgress();
     renderQuiz();
     show("viewQuiz");
   }
-  function saveProgress() { store.set("progress", quiz ? { ids: quiz.qs.map((q) => q.id), answers: quiz.answers, idx: quiz.idx, label: quiz.label } : null); }
+  function saveProgress() { store.set("progress", quiz ? { ids: quiz.qs.map((q) => q.id), answers: quiz.answers, idx: quiz.idx, label: quiz.label, marks: quiz.marks, elim: quiz.elim } : null); }
 
   function renderQuiz() {
     const q = quiz.qs[quiz.idx];
@@ -303,11 +352,14 @@ button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
     $("qSource").textContent = `${q.src}　第 ${q.number} 題`;
     $("qCounter").textContent = `${quiz.idx + 1} / ${n}`;
     $("qProgress").style.width = ((quiz.idx + 1) / n) * 100 + "%";
-    $("qText").textContent = (isMulti(q) ? "【複選】" : "") + q.question;
+    const mk = quiz.marks[q.id] || {};
+    const el = quiz.elim[q.id] || "";
+    $("qText").innerHTML = (isMulti(q) ? "【複選】" : "") + `<span class="hl-target" data-f="q">${markHTML(q.question, mk.q)}</span>`;
     $("qOptions").innerHTML = optKeys(q).map((k) =>
-      `<button class="opt ${(quiz.answers[quiz.idx] || "").includes(k) ? "selected" : ""}" data-k="${k}"><span class="key">(${k})</span><span>${esc(q.options[k])}</span></button>`
+      `<button class="opt ${(quiz.answers[quiz.idx] || "").includes(k) ? "selected" : ""} ${el.includes(k) ? "elim" : ""}" data-k="${k}"><span class="key">(${k})</span><span class="hl-target" data-f="${k}">${markHTML(q.options[k], mk[k])}</span></button>`
     ).join("");
-    document.querySelectorAll(".opt").forEach((b) => (b.onclick = () => choose(b.dataset.k)));
+    document.querySelectorAll(".opt").forEach(bindOption);
+    $("hlClear").disabled = !quiz.marks[q.id] && !quiz.elim[q.id];
     $("prevBtn").disabled = quiz.idx === 0;
     $("nextBtn").textContent = quiz.idx === n - 1 ? "最後一題" : "下一題 →";
     $("nextBtn").disabled = quiz.idx === n - 1;
@@ -320,7 +372,9 @@ button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
   }
   function isMulti(q) { return q.multi || q.answer.length > 1; }
   function choose(k) {
+    const qid = quiz.qs[quiz.idx].id;
     const cur = quiz.answers[quiz.idx] || "";
+    if (!cur.includes(k) && (quiz.elim[qid] || "").includes(k)) setElim(qid, quiz.elim[qid].replace(k, ""));
     if (isMulti(quiz.qs[quiz.idx])) {
       const next = (cur.includes(k) ? cur.replace(k, "") : cur + k).split("").sort().join("");
       quiz.answers[quiz.idx] = next || null;
@@ -358,6 +412,131 @@ button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
   $("confirmYes").onclick = () => { $("confirmBox").hidden = true; grade();
   };
 
+  // ---- 螢光筆 ----
+  // 標記以「字元位置」存：marks[題目id] = { q: [[起, 迄], …], A: [...], … }
+  let hlMode = false;
+  function markHTML(text, ranges) {
+    if (!ranges || !ranges.length) return esc(text);
+    let out = "", pos = 0;
+    ranges.forEach(([a, b], i) => {
+      out += esc(text.slice(pos, a)) + `<mark class="hl" data-i="${i}">${esc(text.slice(a, b))}</mark>`;
+      pos = b;
+    });
+    return out + esc(text.slice(pos));
+  }
+  function mergeRanges(rs) {
+    rs = rs.filter(([a, b]) => b > a).sort((x, y) => x[0] - y[0]);
+    const out = [];
+    rs.forEach((r) => {
+      const last = out[out.length - 1];
+      if (last && r[0] <= last[1]) last[1] = Math.max(last[1], r[1]);
+      else out.push([r[0], r[1]]);
+    });
+    return out;
+  }
+  function offsetIn(el, node, off) {
+    const r = document.createRange();
+    r.setStart(el, 0);
+    r.setEnd(node, off);
+    return r.toString().length;
+  }
+  function setMarks(qid, mk) {
+    Object.keys(mk).forEach((f) => { if (!mk[f].length) delete mk[f]; });
+    if (Object.keys(mk).length) quiz.marks[qid] = mk; else delete quiz.marks[qid];
+    saveProgress();
+  }
+  function applySelection() {
+    const sel = window.getSelection();
+    if (!hlMode || !sel || sel.isCollapsed || !sel.rangeCount) return;
+    const range = sel.getRangeAt(0);
+    const q = quiz.qs[quiz.idx];
+    const mk = JSON.parse(JSON.stringify(quiz.marks[q.id] || {}));
+    let changed = false;
+    document.querySelectorAll("#viewQuiz .hl-target").forEach((el) => {
+      if (!range.intersectsNode(el)) return;
+      const len = el.textContent.length;
+      const a = el.contains(range.startContainer) ? offsetIn(el, range.startContainer, range.startOffset) : 0;
+      const b = el.contains(range.endContainer) ? offsetIn(el, range.endContainer, range.endOffset) : len;
+      if (b > a) {
+        mk[el.dataset.f] = mergeRanges([...(mk[el.dataset.f] || []), [a, b]]);
+        changed = true;
+      }
+    });
+    sel.removeAllRanges();
+    if (changed) { setMarks(q.id, mk); renderQuiz(); }
+  }
+  function setHlMode(on) {
+    hlMode = on;
+    $("hlBtn").setAttribute("aria-pressed", on ? "true" : "false");
+    $("viewQuiz").classList.toggle("hl-on", on);
+    $("toolHint").textContent = on ? "選取文字即可畫上螢光；點螢光可擦掉" : "長按選項可標記刪去";
+  }
+  $("hlBtn").onclick = () => setHlMode(!hlMode);
+  $("hlClear").onclick = () => {
+    const qid = quiz.qs[quiz.idx].id;
+    delete quiz.marks[qid];
+    delete quiz.elim[qid];
+    saveProgress();
+    renderQuiz();
+  };
+  // 選取結束（滑鼠放開、手指離開、調整選取把手後）再畫上
+  let selTimer = null;
+  ["mouseup", "touchend"].forEach((ev) => $("viewQuiz").addEventListener(ev, () => {
+    clearTimeout(selTimer);
+    selTimer = setTimeout(applySelection, ev === "touchend" ? 350 : 0);
+  }));
+  document.addEventListener("selectionchange", () => {
+    if (!hlMode) return;
+    clearTimeout(selTimer);
+    selTimer = setTimeout(applySelection, 700);
+  });
+  // 螢光筆模式下點一下螢光 = 擦掉那一段
+  $("viewQuiz").addEventListener("click", (e) => {
+    const m = e.target.closest("mark.hl");
+    if (!hlMode || !m) return;
+    const sel = window.getSelection();
+    if (sel && !sel.isCollapsed) return;
+    const f = m.closest(".hl-target").dataset.f;
+    const q = quiz.qs[quiz.idx];
+    const mk = JSON.parse(JSON.stringify(quiz.marks[q.id] || {}));
+    mk[f].splice(+m.dataset.i, 1);
+    setMarks(q.id, mk);
+    renderQuiz();
+    e.stopPropagation();
+  }, true);
+
+  // ---- 長按選項 = 刪去法 ----
+  function setElim(qid, v) {
+    v = v.split("").sort().join("");
+    if (v) quiz.elim[qid] = v; else delete quiz.elim[qid];
+    saveProgress();
+  }
+  function bindOption(b) {
+    const k = b.dataset.k;
+    let timer = null, longPressed = false, sx = 0, sy = 0;
+    const cancel = () => { clearTimeout(timer); timer = null; };
+    b.addEventListener("pointerdown", (e) => {
+      if (hlMode || (e.pointerType === "mouse" && e.button !== 0)) return;
+      longPressed = false;
+      sx = e.clientX; sy = e.clientY;
+      timer = setTimeout(() => {
+        longPressed = true;
+        const qid = quiz.qs[quiz.idx].id;
+        const cur = quiz.elim[qid] || "";
+        setElim(qid, cur.includes(k) ? cur.replace(k, "") : cur + k);
+        if (navigator.vibrate) try { navigator.vibrate(15); } catch (err) {}
+        renderQuiz();
+      }, 500);
+    });
+    b.addEventListener("pointermove", (e) => { if (timer && Math.hypot(e.clientX - sx, e.clientY - sy) > 10) cancel(); });
+    ["pointerup", "pointerleave", "pointercancel"].forEach((ev) => b.addEventListener(ev, cancel));
+    b.addEventListener("contextmenu", (e) => e.preventDefault());
+    b.addEventListener("click", () => {
+      if (hlMode || longPressed) { longPressed = false; return; }
+      choose(k);
+    });
+  }
+
   // ---- 批改結果 ----
   let filter = "all";
   function grade() {
@@ -367,6 +546,7 @@ button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
       label: quiz.label,
       qids: quiz.qs.map((q) => q.id),
       mine: quiz.answers.map((a) => a || ""),
+      marks: quiz.marks,
     };
     const res = quiz.qs.map((q, i) => ({ q, mine: quiz.answers[i], ok: quiz.answers[i] === q.answer }));
     rec.right = res.filter((r) => r.ok).length;
@@ -409,15 +589,17 @@ button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
       <div class="card review ${ok ? "right" : "wrong"}" id="r${i}">
         <div class="q-meta"><span>${i + 1}.　${esc(q.src)}　第 ${q.number} 題</span>
           <span class="tag ${ok ? "right" : "wrong"}">${ok ? "答對" : mine ? "答錯" : "未作答"}</span></div>
-        <div class="q-text">${esc(q.question)}</div>
-        ${optKeys(q).map((k) => `<div class="ro ${q.answer.includes(k) ? "correct" : (mine || "").includes(k) ? "mine-wrong" : ""}"><span>(${k})</span><span>${esc(q.options[k])}</span></div>`).join("")}
+        <div class="q-text">${markHTML(q.question, (quiz.marks[q.id] || {}).q)}</div>
+        ${optKeys(q).map((k) => `<div class="ro ${q.answer.includes(k) ? "correct" : (mine || "").includes(k) ? "mine-wrong" : ""}"><span>(${k})</span><span>${markHTML(q.options[k], (quiz.marks[q.id] || {})[k])}</span></div>`).join("")}
         <div class="ans-line">你的答案：<b class="${ok ? "ok" : "bad"}">${mine ? "(" + mine + ")" : "未作答"}</b>　正確答案：<b class="ok">(${q.answer})</b></div>
         ${q.explanation ? `<div class="explain">解析：${esc(q.explanation)}</div>` : ""}
       </div>`).join("") : `<div class="card muted">沒有符合的題目</div>`;
   }
   $("retryWrongBtn").onclick = () => {
     const wrong = quiz.result.filter((r) => !r.ok).map((r) => r.q);
+    const marks = quiz.marks;
     startQuiz(wrong, quiz.label + "（錯題重做）");
+    quiz.marks = marks; saveProgress(); renderQuiz();
   };
   $("retryAllBtn").onclick = () => {
     const qs = quiz.qs.slice();
@@ -450,71 +632,32 @@ button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
       <span class="actions"><button id="discardBtn">放棄</button><button class="primary" id="resumeBtn">繼續作答</button></span></div>`;
     $("viewSelect").prepend(card);
     $("resumeBtn").onclick = () => {
-      quiz = { qs: p.ids.map((id) => byId[id]), answers: p.answers, idx: p.idx || 0, label: p.label };
+      quiz = { qs: p.ids.map((id) => byId[id]), answers: p.answers, idx: p.idx || 0, label: p.label, marks: p.marks || {}, elim: p.elim || {} };
       renderQuiz();
       show("viewQuiz");
     };
     $("discardBtn").onclick = () => { store.set("progress", null); card.remove(); };
   }
 
-  // ---- 答案卷紀錄 ----
-  // 登入 claude.ai 開啟時存到帳號（跨裝置、只有自己看得到）；否則存在這個瀏覽器。
+  // ---- 答案卷紀錄（存在這個瀏覽器） ----
   const History = {
     list: store.get("history", []),
-    col: null,
-    ready: false,
-    saveLocal() {
-      // 瀏覽器空間有限，只留最近 60 份
+    save() {
       this.list.sort((a, b) => b.ts - a.ts);
-      store.set("history", this.list.slice(0, 60));
-    },
-    add(rec) {
-      this.list.unshift(rec);
-      this.saveLocal();
-      if (this.col) this.col.doc(rec.id).set(rec).catch(() => this.fallback());
-    },
-    fallback() {
-      // 沒有寫入權限（例如只有檢視權限）→ 改存瀏覽器
-      this.col = null;
-      if (!$("viewHistory").classList.contains("hidden")) renderHistory();
-    },
-    remove(id) {
-      this.list = this.list.filter((r) => r.id !== id);
-      this.saveLocal();
-      if (this.col) this.col.doc(id).delete().catch(() => {});
-    },
-    async connect() {
-      try {
-        if (!window.claude || !window.claude.use) return;
-        const [db, user] = await Promise.all([window.claude.use("db"), window.claude.use("user")]);
-        if (!db || !user) return;
-        const uid = await user.id();
-        if (!uid) return;
-        const col = db.collection("data/users/" + uid);
-        const snap = await col.orderBy("ts", "desc").limit(500).get();
-        const remote = snap.docs.map((d) => d.data()).filter((r) => r && r.qids);
-        const have = new Set(remote.map((r) => r.id));
-        // 之前只存在瀏覽器的紀錄，補傳到帳號
-        for (const r of this.list) if (!have.has(r.id)) await col.doc(r.id).set(r);
-        const byRid = new Map([...this.list, ...remote].map((r) => [r.id, r]));
-        this.list = [...byRid.values()].sort((a, b) => b.ts - a.ts);
-        this.col = col;
-        this.saveLocal();
-      } catch (e) {
-        this.col = null;
-      } finally {
-        this.ready = true;
-        if (!$("viewHistory").classList.contains("hidden")) renderHistory();
+      this.list = this.list.slice(0, 100);
+      store.set("history", this.list);
+      // 空間不足時丟掉最舊的幾份再存
+      while (this.list.length && JSON.stringify(store.get("history", [])) !== JSON.stringify(this.list)) {
+        this.list.pop();
+        store.set("history", this.list);
       }
     },
+    add(rec) { this.list.unshift(rec); this.save(); },
+    remove(id) { this.list = this.list.filter((r) => r.id !== id); this.save(); },
   };
 
   function renderHistory() {
-    $("histMode").textContent = History.col
-      ? "紀錄已存到你的 claude.ai 帳號，換裝置登入也看得到，只有你自己看得到。"
-      : History.ready
-        ? "紀錄存在這個瀏覽器裡（換瀏覽器或清除網站資料就會不見），最多保留 60 份。"
-        : "正在連線到你的帳號…";
+    $("histMode").textContent = "紀錄存在這個瀏覽器裡（換瀏覽器或清除網站資料就會不見），最多保留最近 100 份。";
     const list = History.list.slice().sort((a, b) => b.ts - a.ts);
     if (!list.length) {
       $("histList").innerHTML = `<p class="muted">還沒有答案卷。交卷批改後會自動存在這裡。</p>`;
@@ -544,7 +687,7 @@ button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
   function openRecord(rec) {
     // 題庫之後若有更正，這裡以目前題庫的題目與答案重新批改
     const pairs = rec.qids.map((id, i) => ({ q: byId[id], mine: rec.mine[i] || null })).filter((p) => p.q);
-    quiz = { qs: pairs.map((p) => p.q), answers: pairs.map((p) => p.mine), idx: 0, label: rec.label };
+    quiz = { qs: pairs.map((p) => p.q), answers: pairs.map((p) => p.mine), idx: 0, label: rec.label, marks: rec.marks || {}, elim: {} };
     showResult(pairs.map((p) => ({ ...p, ok: p.mine === p.q.answer })), rec.label, rec.ts);
   }
   function openHistory() { renderHistory(); show("viewHistory"); }
@@ -553,6 +696,5 @@ button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 
   renderSelect();
   offerResume();
-  History.connect();
 })();
 </script>
