@@ -471,7 +471,12 @@ button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
     add(rec) {
       this.list.unshift(rec);
       this.saveLocal();
-      if (this.col) this.col.doc(rec.id).set(rec).catch(() => {});
+      if (this.col) this.col.doc(rec.id).set(rec).catch(() => this.fallback());
+    },
+    fallback() {
+      // 沒有寫入權限（例如只有檢視權限）→ 改存瀏覽器
+      this.col = null;
+      if (!$("viewHistory").classList.contains("hidden")) renderHistory();
     },
     remove(id) {
       this.list = this.list.filter((r) => r.id !== id);
@@ -490,7 +495,7 @@ button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
         const remote = snap.docs.map((d) => d.data()).filter((r) => r && r.qids);
         const have = new Set(remote.map((r) => r.id));
         // 之前只存在瀏覽器的紀錄，補傳到帳號
-        for (const r of this.list) if (!have.has(r.id)) await col.doc(r.id).set(r).catch(() => {});
+        for (const r of this.list) if (!have.has(r.id)) await col.doc(r.id).set(r);
         const byRid = new Map([...this.list, ...remote].map((r) => [r.id, r]));
         this.list = [...byRid.values()].sort((a, b) => b.ts - a.ts);
         this.col = col;
