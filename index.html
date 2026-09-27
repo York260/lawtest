@@ -459,7 +459,7 @@ button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
     hlMode = on;
     $("hlBtn").setAttribute("aria-pressed", on ? "true" : "false");
     $("viewQuiz").classList.toggle("hl-on", on);
-    $("toolHint").textContent = on ? "點字畫一小段・左右滑畫任意範圍・點螢光擦掉・點空白處關閉" : "長按選項刪去・點空白處開螢光筆";
+    $("toolHint").textContent = on ? "點一下畫／擦一個字・左右滑畫／擦一段・點空白處關閉" : "長按選項刪去・點空白處開螢光筆";
     renderQuiz();
   }
   let toastTimer = null;
@@ -539,14 +539,6 @@ button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
       paintPreview();
     }
   });
-  const PUNCT = "，。、？！：；,.?!:;「」『』（）()《》〈〉【】 ";
-  function phraseAt(text, i) {
-    if (PUNCT.includes(text[i])) return [i, i + 1];
-    let a = i, b = i + 1;
-    while (a > 0 && !PUNCT.includes(text[a - 1])) a--;
-    while (b < text.length && !PUNCT.includes(text[b])) b++;
-    return [a, b];
-  }
   function endPaint(e) {
     if (!paint || e.pointerId !== paint.id) return;
     const q = quiz.qs[quiz.idx];
@@ -554,12 +546,9 @@ button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
     const lo = Math.min(paint.start, paint.end), hi = Math.max(paint.start, paint.end) + 1;
     const cur = mk[paint.f] || [];
     if (paint.erase) {
-      // 只點一下 → 擦掉整段螢光；滑過 → 擦掉滑過的字
-      const [x, y] = lo + 1 === hi ? cur.find(([a, b]) => a <= lo && lo < b) || [lo, hi] : [lo, hi];
+      // 點一下擦掉那個字；滑過擦掉滑過的字
+      const [x, y] = [lo, hi];
       mk[paint.f] = mergeRanges(cur.flatMap(([a, b]) => [[a, Math.min(b, x)], [Math.max(a, y), b]]));
-    } else if (lo + 1 === hi) {
-      // 只點一下 → 畫上點到的那一小段（以標點分段）
-      mk[paint.f] = mergeRanges([...cur, phraseAt(paint.target.textContent, lo)]);
     } else {
       mk[paint.f] = mergeRanges([...cur, [lo, hi]]);
     }
