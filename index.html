@@ -6,6 +6,7 @@
   --bg: #f6f7f9; --card: #fff; --text: #1d232b; --muted: #66707c; --line: #dde1e6;
   --accent: #2458c6; --accent-soft: #e8eefb; --ok: #1a7f45; --ok-soft: #e4f4ea;
   --bad: #c22f2f; --bad-soft: #fbe8e8; --warn: #9a6400;
+  --alt: #7b3fc4; --alt-soft: #f0e8fb; --free: #b25e00; --free-soft: #fdeed8;
   --hl: #fff08a; --elim-line: #e8a0a0; --elim-bg: #fdf3f3;
   --fs: 18px;
 }
@@ -14,6 +15,7 @@
     --bg: #14171b; --card: #1d2127; --text: #e6e9ed; --muted: #9aa3ad; --line: #323840;
     --accent: #7ea3f2; --accent-soft: #24304a; --ok: #5cc98a; --ok-soft: #1c3527;
     --bad: #f07b7b; --bad-soft: #402325; --warn: #e0b050; color-scheme: dark;
+    --alt: #b993f0; --alt-soft: #2f2245; --free: #f0b45c; --free-soft: #3e2e14;
     --hl: #6b5d12; --elim-line: #8f4d4d; --elim-bg: #2a1f21;
   }
 }
@@ -21,6 +23,7 @@
   color-scheme: dark; --bg: #14171b; --card: #1d2127; --text: #e6e9ed; --muted: #9aa3ad; --line: #323840;
   --accent: #7ea3f2; --accent-soft: #24304a; --ok: #5cc98a; --ok-soft: #1c3527;
   --bad: #f07b7b; --bad-soft: #402325; --warn: #e0b050;
+  --alt: #b993f0; --alt-soft: #2f2245; --free: #f0b45c; --free-soft: #3e2e14;
   --hl: #6b5d12; --elim-line: #8f4d4d; --elim-bg: #2a1f21;
 }
 * { box-sizing: border-box; }
@@ -76,6 +79,26 @@ h2 { font-size: 1.15em; margin: 0 0 10px; }
 .grid button.cur { outline: 2px solid var(--accent); outline-offset: 1px; }
 .grid button.right { background: var(--ok-soft); border-color: var(--ok); color: var(--ok); }
 .grid button.wrong { background: var(--bad-soft); border-color: var(--bad); color: var(--bad); }
+.grid button.alt { background: var(--alt-soft); border-color: var(--alt); color: var(--alt); }
+.grid button.free { background: var(--free-soft); border-color: var(--free); color: var(--free); }
+.grid button.sp { box-shadow: inset 0 -3px 0 var(--alt); }
+.review.alt { border-left: 5px solid var(--alt); }
+.review.free { border-left: 5px solid var(--free); }
+.review .ro.correct-alt { background: var(--alt-soft); color: var(--alt); font-weight: 600; outline: 1px dashed var(--alt); }
+.tag.alt { background: var(--alt-soft); color: var(--alt); }
+.tag.free { background: var(--free-soft); color: var(--free); }
+.tag.sp { background: transparent; color: var(--alt); border: 1px solid var(--alt); margin-left: 6px; }
+.ans-line b.alt { color: var(--alt); }
+.ans-line b.free { color: var(--free); }
+.sp-note { margin: 10px 0 0; padding: 8px 12px; border-radius: 8px; font-size: .9em; border: 1px solid var(--alt); background: var(--alt-soft); color: var(--alt); }
+.sp-note.free { border-color: var(--free); background: var(--free-soft); color: var(--free); }
+.at-row.alt { background: var(--alt-soft); }
+.at-row.alt .at-correct { color: var(--alt); }
+.at-row.free { background: var(--free-soft); }
+.at-row.free .at-correct { color: var(--free); }
+.chip { display: inline-block; padding: 0 8px; border-radius: 999px; font-size: .8em; margin-left: 6px; border: 1px solid; }
+.chip.alt { color: var(--alt); border-color: var(--alt); background: var(--alt-soft); }
+.chip.free { color: var(--free); border-color: var(--free); background: var(--free-soft); }
 .score { text-align: center; }
 .score .big { font-size: 2.4em; font-weight: 700; line-height: 1.2; }
 .score .big .of { color: var(--muted); font-size: .55em; font-weight: 500; }
@@ -401,10 +424,12 @@ button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
     const el = quiz.elim[q.id] || "";
     const txt = (t, f) => (hlMode ? charHTML(t, mk[f]) : markHTML(t, mk[f]));
     $("qText").innerHTML = (isMulti(q) ? "【複選】" : "") + `<span class="hl-target" data-f="q">${txt(q.question, "q")}</span>`;
+    const oldNote = document.getElementById("spNote"); if (oldNote) oldNote.remove();
     $("qOptions").innerHTML = optKeys(q).map((k) =>
       `<button class="opt ${(quiz.answers[quiz.idx] || "").includes(k) ? "selected" : ""} ${el.includes(k) ? "elim" : ""}" data-k="${k}"><span class="key">(${k})</span><span class="hl-target" data-f="${k}">${txt(q.options[k], k)}</span></button>`
     ).join("");
     document.querySelectorAll(".opt").forEach(bindOption);
+    if (isSpecial(q)) $("qOptions").insertAdjacentHTML("afterend", spNote(q));
     $("hlClear").disabled = !quiz.marks[q.id] && !quiz.elim[q.id];
     $("prevBtn").disabled = quiz.idx === 0;
     $("nextBtn").textContent = quiz.idx === n - 1 ? "最後一題" : "下一題 →";
@@ -412,15 +437,46 @@ button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
     const done = quiz.answers.filter(Boolean).length;
     $("answeredInfo").textContent = `已作答 ${done} / ${n}　（點題號可跳題）`;
     $("qGrid").innerHTML = quiz.qs.map((_, i) =>
-      `<button data-i="${i}" class="${quiz.answers[i] ? "done" : ""} ${i === quiz.idx ? "cur" : ""}">${i + 1}</button>`
+      `<button data-i="${i}" class="${quiz.answers[i] ? "done" : ""} ${i === quiz.idx ? "cur" : ""} ${isSpecial(quiz.qs[i]) ? "sp" : ""}">${i + 1}</button>`
     ).join("");
     document.querySelectorAll("#qGrid button").forEach((b) => (b.onclick = () => go(+b.dataset.i)));
   }
   function isMulti(q) { return q.multi || (q.accepted || [q.answer]).some((a) => a.length > 1); }
   // 特殊題：accepted＝所有給分答案；full_credit＝本題無正確答案、一律給分
-  function isCorrect(q, mine) { return !!q.full_credit || (q.accepted ? q.accepted.includes(mine) : mine === q.answer); }
+  // 批改狀態：ok 答對｜alt 答了另一個給分答案｜free 一律給分（送分）｜wrong 答錯｜blank 未作答
+  function gradeStatus(q, mine) {
+    if (q.full_credit) return "free";
+    if (!mine) return "blank";
+    if (q.accepted) return q.accepted[0] === mine ? "ok" : q.accepted.includes(mine) ? "alt" : "wrong";
+    return mine === q.answer ? "ok" : "wrong";
+  }
+  const isOkStatus = (st) => st === "ok" || st === "alt" || st === "free";
+  function isCorrect(q, mine) { return isOkStatus(gradeStatus(q, mine)); }
+  function isSpecial(q) { return !!q.full_credit || !!(q.accepted && q.accepted.length > 1); }
+  function mkRes(q, mine) { const st = gradeStatus(q, mine); return { q, mine, st, ok: isOkStatus(st) }; }
+  function primaryKeys(q) { return q.full_credit ? [] : [...new Set((q.accepted ? q.accepted[0] : q.answer).split(""))]; }
   function correctKeys(q) { return q.full_credit ? [] : [...new Set((q.accepted || [q.answer]).join("").split(""))]; }
   function answerText(q) { return q.full_credit ? "本題無正確答案，一律給分" : (q.accepted || [q.answer]).map((a) => "(" + a + ")").join(" 或 "); }
+  const ST_TAG = { ok: "答對", alt: "答對（另一給分答案）", free: "一律給分", wrong: "答錯", blank: "未作答" };
+  const ST_GRID = { ok: "right", alt: "alt", free: "free", wrong: "wrong", blank: "wrong" };
+  const ST_ROW = { ok: "ok", alt: "alt", free: "free", wrong: "wrong", blank: "blank" };
+  function spNote(q) {
+    if (q.full_credit) return `<div class="sp-note free" id="spNote">本題無正確答案，一律給分（作答與否皆算對）</div>`;
+    if (isSpecial(q)) return `<div class="sp-note" id="spNote">本題有多個給分答案：${esc(answerText(q))}</div>`;
+    return "";
+  }
+  // 歷史紀錄用：以目前題庫重新統計
+  function recStats(rec) {
+    let right = 0, alt = 0, free = 0, total = 0;
+    rec.qids.forEach((id, i) => {
+      const q = byId[id]; if (!q) return;
+      total++; const st = gradeStatus(q, rec.mine[i] || null);
+      if (isOkStatus(st)) right++;
+      if (st === "alt") alt++;
+      if (st === "free") free++;
+    });
+    return { right, total, alt, free };
+  }
   function choose(k) {
     const qid = quiz.qs[quiz.idx].id;
     const cur = quiz.answers[quiz.idx] || "";
@@ -453,7 +509,7 @@ button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
   });
 
   $("submitBtn").onclick = () => {
-    const left = quiz.answers.filter((a) => !a).length;
+    const left = quiz.answers.filter((a, i) => !a && !quiz.qs[i].full_credit).length;  // 一律給分的題不算未作答
     if (!left) return grade();
     $("confirmMsg").textContent = `還有 ${left} 題未作答，確定要交卷嗎？（未作答以答錯計）`;
     $("confirmBox").hidden = false;
@@ -643,8 +699,10 @@ button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
       mine: quiz.answers.map((a) => a || ""),
       marks: quiz.marks,
     };
-    const res = quiz.qs.map((q, i) => ({ q, mine: quiz.answers[i], ok: isCorrect(q, quiz.answers[i]) }));
+    const res = quiz.qs.map((q, i) => mkRes(q, quiz.answers[i]));
     rec.right = res.filter((r) => r.ok).length;
+    rec.alt = res.filter((r) => r.st === "alt").length;
+    rec.free = res.filter((r) => r.st === "free").length;
     rec.total = res.length;
     store.set("progress", null);
     History.add(rec);
@@ -652,16 +710,18 @@ button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
   }
   function showResult(res, label, ts) {
     const right = res.filter((r) => r.ok).length;
-    const blank = res.filter((r) => !r.mine).length;
+    const blank = res.filter((r) => r.st === "blank").length;
+    const nAlt = res.filter((r) => r.st === "alt").length, nFree = res.filter((r) => r.st === "free").length;
     quiz.result = res;
     $("resWhen").textContent = ts ? "作答時間：" + fmtTime(ts) : "";
     $("resSource").textContent = label;
     $("resRight").textContent = right;
     $("resTotal").textContent = res.length;
-    $("resDetail").textContent = `答對 ${right} 題・答錯 ${res.length - right - blank} 題・未作答 ${blank} 題・正確率 ${res.length ? Math.round((right / res.length) * 100) : 0}%`;
+    $("resDetail").innerHTML = `答對 ${right} 題・答錯 ${res.length - right - blank} 題・未作答 ${blank} 題・正確率 ${res.length ? Math.round((right / res.length) * 100) : 0}%`
+      + (nAlt ? `<span class="chip alt">另一給分答案 ${nAlt} 題</span>` : "") + (nFree ? `<span class="chip free">一律給分 ${nFree} 題</span>` : "");
     $("retryWrongBtn").disabled = right === res.length;
     document.querySelectorAll("#resMode button").forEach((b) => b.classList.toggle("on", b.dataset.m === viewMode));
-    $("resGrid").innerHTML = res.map((r, i) => `<button data-i="${i}" class="${r.ok ? "right" : "wrong"}">${i + 1}</button>`).join("");
+    $("resGrid").innerHTML = res.map((r, i) => `<button data-i="${i}" class="${ST_GRID[r.st]} ${isSpecial(r.q) ? "sp" : ""}">${i + 1}</button>`).join("");
     document.querySelectorAll("#resGrid button").forEach((b) => (b.onclick = () => {
       setFilter("all");
       setMode("detail");
@@ -690,28 +750,28 @@ button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
   function renderResultList() {
     const items = quiz.result.map((r, i) => ({ ...r, i })).filter((r) => filter === "all" || (filter === "wrong" ? !r.ok : r.ok));
     if (viewMode === "table") { renderAnswerTable(items); return; }
-    $("resList").innerHTML = items.length ? items.map(({ q, mine, ok, i }) => `
-      <div class="card review ${ok ? "right" : "wrong"}" id="r${i}">
+    $("resList").innerHTML = items.length ? items.map(({ q, mine, ok, st, i }) => `
+      <div class="card review ${ST_GRID[st]}" id="r${i}">
         <div class="q-meta"><span>${i + 1}.　${esc(q.src)}　第 ${q.number} 題</span>
-          <span class="tag ${ok ? "right" : "wrong"}">${ok ? "答對" : mine ? "答錯" : "未作答"}</span></div>
+          <span><span class="tag ${ST_GRID[st]}">${ST_TAG[st]}</span>${isSpecial(q) ? `<span class="tag sp">特殊題</span>` : ""}</span></div>
         <div class="q-text">${markHTML(q.question, (quiz.marks[q.id] || {}).q)}</div>
-        ${optKeys(q).map((k) => `<div class="ro ${correctKeys(q).includes(k) ? "correct" : (mine || "").includes(k) ? "mine-wrong" : ""}"><span>(${k})</span><span>${markHTML(q.options[k], (quiz.marks[q.id] || {})[k])}</span></div>`).join("")}
-        <div class="ans-line">你的答案：<b class="${ok ? "ok" : "bad"}">${mine ? "(" + mine + ")" : "未作答"}</b>　正確答案：<b class="ok">${answerText(q)}</b></div>
+        ${optKeys(q).map((k) => `<div class="ro ${primaryKeys(q).includes(k) ? "correct" : correctKeys(q).includes(k) ? "correct-alt" : (mine || "").includes(k) && !q.full_credit ? "mine-wrong" : ""}"><span>(${k})</span><span>${markHTML(q.options[k], (quiz.marks[q.id] || {})[k])}</span></div>`).join("")}
+        <div class="ans-line">你的答案：<b class="${st === "alt" ? "alt" : st === "free" ? "free" : ok ? "ok" : "bad"}">${mine ? "(" + mine + ")" : "未作答"}</b>　正確答案：<b class="${q.full_credit ? "free" : isSpecial(q) ? "alt" : "ok"}">${answerText(q)}</b></div>
         ${q.explanation ? `<div class="explain">解析：${esc(q.explanation)}</div>` : ""}
       </div>`).join("") : `<div class="card muted">沒有符合的題目</div>`;
   }
   // 一覽表：題號／你的答案／正確答案，方便對照謄到實體考卷；點一列可跳到該題詳解
   function renderAnswerTable(items) {
     if (!items.length) { $("resList").innerHTML = `<div class="card muted">沒有符合的題目</div>`; return; }
-    const rows = items.map(({ q, mine, ok, i }) => `
-      <div class="at-row ${ok ? "ok" : mine ? "wrong" : "blank"}" data-i="${i}">
+    const rows = items.map(({ q, mine, st, i }) => `
+      <div class="at-row ${ST_ROW[st]}" data-i="${i}">
         <span class="at-num">${i + 1}</span>
         <span class="at-mine">${mine ? esc(mine) : "－"}</span>
         <span class="at-correct">${q.full_credit ? "一律給分" : esc((q.accepted || [q.answer]).join(" / "))}</span>
       </div>`).join("");
     $("resList").innerHTML = `<div class="card">
       <div class="at-legend"><span class="at-num">題號</span><span class="at-mine">你的</span><span class="at-correct">正確</span>
-        <span class="muted">・點一列可看詳解，紅底為答錯</span></div>
+        <span class="muted">・點一列可看詳解；紅底＝答錯、紫底＝另一給分答案、橘底＝一律給分</span></div>
       <div class="at-wrap">${rows}</div>
     </div>`;
   }
@@ -790,10 +850,11 @@ button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
       $("histList").innerHTML = `<p class="muted">還沒有答案卷。交卷批改後會自動存在這裡。</p>`;
       return;
     }
-    $("histList").innerHTML = list.map((r) => {
+    $("histList").innerHTML = list.map((r0) => {
+      const r = { ...r0, ...recStats(r0) };  // 以目前題庫重新統計（含特殊題）
       const pct = r.total ? Math.round((r.right / r.total) * 100) : 0;
       return `<div class="card hist-item" data-id="${esc(r.id)}" style="margin:10px 0 0">
-        <div><div class="when">${fmtTime(r.ts)}</div><div class="label">${esc(r.label)}</div></div>
+        <div><div class="when">${fmtTime(r.ts)}</div><div class="label">${esc(r.label)}${r.alt ? `<span class="chip alt">另一給分答案 ${r.alt}</span>` : ""}${r.free ? `<span class="chip free">一律給分 ${r.free}</span>` : ""}</div></div>
         <div class="pct ${pct >= 80 ? "good" : pct < 60 ? "bad" : ""}">${pct}%<small>${r.right} / ${r.total} 題</small></div>
         <div class="acts">
           <button class="primary" data-act="view">查看答案卷</button>
@@ -815,7 +876,7 @@ button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
     // 題庫之後若有更正，這裡以目前題庫的題目與答案重新批改
     const pairs = rec.qids.map((id, i) => ({ q: byId[id], mine: rec.mine[i] || null })).filter((p) => p.q);
     quiz = { qs: pairs.map((p) => p.q), answers: pairs.map((p) => p.mine), idx: 0, label: rec.label, marks: rec.marks || {}, elim: {} };
-    showResult(pairs.map((p) => ({ ...p, ok: isCorrect(p.q, p.mine) })), rec.label, rec.ts);
+    showResult(pairs.map((p) => mkRes(p.q, p.mine)), rec.label, rec.ts);
   }
   function openHistory() { renderHistory(); show("viewHistory"); }
   $("historyBtn").onclick = openHistory;
