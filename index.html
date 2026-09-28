@@ -416,7 +416,11 @@ button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
     ).join("");
     document.querySelectorAll("#qGrid button").forEach((b) => (b.onclick = () => go(+b.dataset.i)));
   }
-  function isMulti(q) { return q.multi || q.answer.length > 1; }
+  function isMulti(q) { return q.multi || (q.accepted || [q.answer]).some((a) => a.length > 1); }
+  // 特殊題：accepted＝所有給分答案；full_credit＝本題無正確答案、一律給分
+  function isCorrect(q, mine) { return !!q.full_credit || (q.accepted ? q.accepted.includes(mine) : mine === q.answer); }
+  function correctKeys(q) { return q.full_credit ? [] : [...new Set((q.accepted || [q.answer]).join("").split(""))]; }
+  function answerText(q) { return q.full_credit ? "本題無正確答案，一律給分" : (q.accepted || [q.answer]).map((a) => "(" + a + ")").join(" 或 "); }
   function choose(k) {
     const qid = quiz.qs[quiz.idx].id;
     const cur = quiz.answers[quiz.idx] || "";
@@ -639,7 +643,7 @@ button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
       mine: quiz.answers.map((a) => a || ""),
       marks: quiz.marks,
     };
-    const res = quiz.qs.map((q, i) => ({ q, mine: quiz.answers[i], ok: quiz.answers[i] === q.answer }));
+    const res = quiz.qs.map((q, i) => ({ q, mine: quiz.answers[i], ok: isCorrect(q, quiz.answers[i]) }));
     rec.right = res.filter((r) => r.ok).length;
     rec.total = res.length;
     store.set("progress", null);
@@ -691,8 +695,8 @@ button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
         <div class="q-meta"><span>${i + 1}.　${esc(q.src)}　第 ${q.number} 題</span>
           <span class="tag ${ok ? "right" : "wrong"}">${ok ? "答對" : mine ? "答錯" : "未作答"}</span></div>
         <div class="q-text">${markHTML(q.question, (quiz.marks[q.id] || {}).q)}</div>
-        ${optKeys(q).map((k) => `<div class="ro ${q.answer.includes(k) ? "correct" : (mine || "").includes(k) ? "mine-wrong" : ""}"><span>(${k})</span><span>${markHTML(q.options[k], (quiz.marks[q.id] || {})[k])}</span></div>`).join("")}
-        <div class="ans-line">你的答案：<b class="${ok ? "ok" : "bad"}">${mine ? "(" + mine + ")" : "未作答"}</b>　正確答案：<b class="ok">(${q.answer})</b></div>
+        ${optKeys(q).map((k) => `<div class="ro ${correctKeys(q).includes(k) ? "correct" : (mine || "").includes(k) ? "mine-wrong" : ""}"><span>(${k})</span><span>${markHTML(q.options[k], (quiz.marks[q.id] || {})[k])}</span></div>`).join("")}
+        <div class="ans-line">你的答案：<b class="${ok ? "ok" : "bad"}">${mine ? "(" + mine + ")" : "未作答"}</b>　正確答案：<b class="ok">${answerText(q)}</b></div>
         ${q.explanation ? `<div class="explain">解析：${esc(q.explanation)}</div>` : ""}
       </div>`).join("") : `<div class="card muted">沒有符合的題目</div>`;
   }
@@ -703,7 +707,7 @@ button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
       <div class="at-row ${ok ? "ok" : mine ? "wrong" : "blank"}" data-i="${i}">
         <span class="at-num">${i + 1}</span>
         <span class="at-mine">${mine ? esc(mine) : "－"}</span>
-        <span class="at-correct">${esc(q.answer)}</span>
+        <span class="at-correct">${q.full_credit ? "一律給分" : esc((q.accepted || [q.answer]).join(" / "))}</span>
       </div>`).join("");
     $("resList").innerHTML = `<div class="card">
       <div class="at-legend"><span class="at-num">題號</span><span class="at-mine">你的</span><span class="at-correct">正確</span>
@@ -811,7 +815,7 @@ button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
     // 題庫之後若有更正，這裡以目前題庫的題目與答案重新批改
     const pairs = rec.qids.map((id, i) => ({ q: byId[id], mine: rec.mine[i] || null })).filter((p) => p.q);
     quiz = { qs: pairs.map((p) => p.q), answers: pairs.map((p) => p.mine), idx: 0, label: rec.label, marks: rec.marks || {}, elim: {} };
-    showResult(pairs.map((p) => ({ ...p, ok: p.mine === p.q.answer })), rec.label, rec.ts);
+    showResult(pairs.map((p) => ({ ...p, ok: isCorrect(p.q, p.mine) })), rec.label, rec.ts);
   }
   function openHistory() { renderHistory(); show("viewHistory"); }
   $("historyBtn").onclick = openHistory;
