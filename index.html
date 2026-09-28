@@ -429,7 +429,6 @@ button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
       `<button class="opt ${(quiz.answers[quiz.idx] || "").includes(k) ? "selected" : ""} ${el.includes(k) ? "elim" : ""}" data-k="${k}"><span class="key">(${k})</span><span class="hl-target" data-f="${k}">${txt(q.options[k], k)}</span></button>`
     ).join("");
     document.querySelectorAll(".opt").forEach(bindOption);
-    if (isSpecial(q)) $("qOptions").insertAdjacentHTML("afterend", spNote(q));
     $("hlClear").disabled = !quiz.marks[q.id] && !quiz.elim[q.id];
     $("prevBtn").disabled = quiz.idx === 0;
     $("nextBtn").textContent = quiz.idx === n - 1 ? "最後一題" : "下一題 →";
