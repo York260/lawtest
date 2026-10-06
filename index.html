@@ -127,20 +127,24 @@ mark.hl { background: var(--hl); color: inherit; border-radius: 3px; padding: 0 
 .at-legend { display: flex; gap: 8px; font-size: 12px; color: var(--muted); margin: 0 0 8px; padding: 0 6px; }
 .at-legend .at-num { width: 2.4em; flex: none; }
 .at-legend .at-mine, .at-legend .at-correct { min-width: 2.6em; flex: none; text-align: center; }
-.at-wrap { column-width: 190px; column-gap: 12px; }
+.at-wrap { display: flex; flex-direction: column; gap: 8px; touch-action: pan-y; }
 .at-row {
-  display: flex; align-items: baseline; gap: 8px; padding: 5px 6px; margin-bottom: 2px;
-  break-inside: avoid; border-radius: 6px; font-variant-numeric: tabular-nums; cursor: pointer;
+  display: flex; align-items: center; gap: 10px; padding: 12px 14px; font-size: 1.08em;
+  border: 1px solid var(--line); border-radius: 10px; font-variant-numeric: tabular-nums; cursor: pointer;
 }
 .at-row:hover { background: var(--accent-soft); }
-.at-row .at-num { width: 2.4em; color: var(--muted); font-size: .85em; flex: none; }
-.at-row .at-mine, .at-row .at-correct { min-width: 2.6em; font-weight: 700; text-align: center; flex: none; }
+.at-row .at-num { width: 2.6em; color: var(--muted); font-size: .85em; flex: none; }
+.at-row .at-mine, .at-row .at-correct { min-width: 2.8em; font-weight: 700; text-align: center; flex: none; }
 .at-row.wrong { background: var(--bad-soft); }
 .at-row.wrong:hover { background: var(--bad-soft); filter: brightness(0.96); }
 .at-row.wrong .at-mine { color: var(--bad); text-decoration: line-through; }
 .at-row.wrong .at-correct { color: var(--ok); }
 .at-row.blank .at-mine { color: var(--muted); }
 .at-row.ok .at-correct { color: var(--ok); }
+.at-pager { display: flex; align-items: center; justify-content: center; gap: 16px; margin-top: 16px; }
+.at-pager button { width: 42px; height: 42px; border-radius: 50%; padding: 0; display: flex; align-items: center; justify-content: center; flex: none; }
+.at-pager button svg { width: 18px; height: 18px; stroke: currentColor; fill: none; stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; }
+.at-pageinfo { font-size: 14px; color: var(--muted); min-width: 10em; text-align: center; font-variant-numeric: tabular-nums; }
 .back-to-top {
   position: fixed; right: 16px; bottom: calc(20px + env(safe-area-inset-bottom, 0px)); z-index: 15;
   width: 44px; height: 44px; border-radius: 50%; display: flex; align-items: center; justify-content: center;
@@ -630,6 +634,8 @@ button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
   // ---- 批改結果 ----
   let filter = "all";
   let viewMode = store.get("resViewMode", "detail");
+  let atPage = 0;
+  let atItems = [];
   function grade() {
     const rec = {
       id: "s" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
@@ -656,6 +662,7 @@ button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
     $("resTotal").textContent = res.length;
     $("resDetail").textContent = `答對 ${right} 題・答錯 ${res.length - right - blank} 題・未作答 ${blank} 題・正確率 ${res.length ? Math.round((right / res.length) * 100) : 0}%`;
     $("retryWrongBtn").disabled = right === res.length;
+    atPage = 0;
     document.querySelectorAll("#resMode button").forEach((b) => b.classList.toggle("on", b.dataset.m === viewMode));
     $("resGrid").innerHTML = res.map((r, i) => `<button data-i="${i}" class="${r.ok ? "right" : "wrong"}">${i + 1}</button>`).join("");
     document.querySelectorAll("#resGrid button").forEach((b) => (b.onclick = () => {
@@ -672,12 +679,14 @@ button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
   }
   function setFilter(f) {
     filter = f;
+    atPage = 0;
     document.querySelectorAll("#resFilter button").forEach((b) => b.classList.toggle("on", b.dataset.f === f));
     renderResultList();
   }
   document.querySelectorAll("#resFilter button").forEach((b) => (b.onclick = () => setFilter(b.dataset.f)));
   function setMode(m) {
     viewMode = m;
+    atPage = 0;
     store.set("resViewMode", m);
     document.querySelectorAll("#resMode button").forEach((b) => b.classList.toggle("on", b.dataset.m === m));
     renderResultList();
@@ -696,10 +705,36 @@ button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
         ${q.explanation ? `<div class="explain">解析：${esc(q.explanation)}</div>` : ""}
       </div>`).join("") : `<div class="card muted">沒有符合的題目</div>`;
   }
-  // 一覽表：題號／你的答案／正確答案，方便對照謄到實體考卷；點一列可跳到該題詳解
+  // 一覽表：以 5 題為一組的卡片，左右切換，方便對照謄到實體考卷；點一列可跳到該題詳解
+  function atPageCount() { return Math.max(1, Math.ceil(atItems.length / 5)); }
+  function atGoto(p) {
+    atPage = Math.min(Math.max(p, 0), atPageCount() - 1);
+    renderAnswerTable(atItems);
+  }
+  function bindSwipeNav(el, onSwipeLeft, onSwipeRight) {
+    if (!el) return;
+    let sx = null, sy = null;
+    el.addEventListener("pointerdown", (e) => {
+      if (e.pointerType === "mouse" && e.button !== 0) return;
+      sx = e.clientX; sy = e.clientY;
+    });
+    el.addEventListener("pointerup", (e) => {
+      if (sx === null) return;
+      const dx = e.clientX - sx, dy = e.clientY - sy;
+      sx = null;
+      if (Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy) * 1.5) (dx < 0 ? onSwipeLeft : onSwipeRight)();
+    });
+    el.addEventListener("pointercancel", () => { sx = null; });
+  }
   function renderAnswerTable(items) {
+    atItems = items;
     if (!items.length) { $("resList").innerHTML = `<div class="card muted">沒有符合的題目</div>`; return; }
-    const rows = items.map(({ q, mine, ok, i }) => `
+    const pageSize = 5;
+    const pages = atPageCount();
+    atPage = Math.min(Math.max(atPage, 0), pages - 1);
+    const start = atPage * pageSize;
+    const chunk = items.slice(start, start + pageSize);
+    const rows = chunk.map(({ q, mine, ok, i }) => `
       <div class="at-row ${ok ? "ok" : mine ? "wrong" : "blank"}" data-i="${i}">
         <span class="at-num">${i + 1}</span>
         <span class="at-mine">${mine ? esc(mine) : "－"}</span>
@@ -707,10 +742,24 @@ button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
       </div>`).join("");
     $("resList").innerHTML = `<div class="card">
       <div class="at-legend"><span class="at-num">題號</span><span class="at-mine">你的</span><span class="at-correct">正確</span>
-        <span class="muted">・點一列可看詳解，紅底為答錯</span></div>
-      <div class="at-wrap">${rows}</div>
+        <span class="muted">・點一列可看詳解</span></div>
+      <div class="at-wrap" id="atWrap">${rows}</div>
+      <div class="at-pager">
+        <button id="atPrev" aria-label="上一組"${atPage === 0 ? " disabled" : ""}><svg viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6"/></svg></button>
+        <span class="at-pageinfo">第 ${start + 1}–${Math.min(start + pageSize, items.length)} 題（共 ${items.length} 題）</span>
+        <button id="atNext" aria-label="下一組"${atPage === pages - 1 ? " disabled" : ""}><svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg></button>
+      </div>
     </div>`;
+    $("atPrev").onclick = () => atGoto(atPage - 1);
+    $("atNext").onclick = () => atGoto(atPage + 1);
+    bindSwipeNav($("atWrap"), () => atGoto(atPage + 1), () => atGoto(atPage - 1));
   }
+  // 一覽表卡片顯示時，左右鍵也能切換頁
+  document.addEventListener("keydown", (e) => {
+    if ($("viewResult").classList.contains("hidden") || viewMode !== "table" || e.ctrlKey || e.metaKey || e.altKey) return;
+    if (e.key === "ArrowLeft") atGoto(atPage - 1);
+    else if (e.key === "ArrowRight") atGoto(atPage + 1);
+  });
   // 一覽表點列 → 切回詳細列表並捲到該題（監聽掛在容器上，重新渲染後仍有效）
   $("resList").addEventListener("click", (e) => {
     const row = e.target.closest(".at-row");
