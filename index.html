@@ -59,6 +59,12 @@ h2 { font-size: 1.15em; margin: 0 0 10px; }
 .sec-list label:first-of-type { border-top: 0; }
 .sec-list input { width: 20px; height: 20px; accent-color: var(--accent); }
 .sec-list .count { margin-left: auto; font-size: 14px; color: var(--muted); }
+.chapter-select-label { display: block; font-size: 13px; color: var(--muted); margin: 2px 0 6px; }
+.chapter-select {
+  width: 100%; font: inherit; font-size: 16px; padding: 10px 12px; border-radius: 10px;
+  border: 1px solid var(--line); background: var(--card); color: var(--text); margin-bottom: 4px;
+}
+#otherSelNote { margin: 10px 2px 0; }
 .options-row { display: flex; flex-wrap: wrap; gap: 16px; margin: 6px 0 14px; font-size: 15px; }
 .options-row label { display: flex; align-items: center; gap: 6px; cursor: pointer; }
 .actions { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
@@ -142,6 +148,8 @@ body.epaper #startCard {
   box-shadow: 0 -6px 14px rgba(0,0,0,.12); margin-bottom: 0;
 }
 body.epaper #startCard .actions { padding-right: 56px; }
+/* 電子紙模式：結果頁也藏起大題號格，預設用五題一頁的一覽表當主要檢視 */
+body.epaper #viewResult #resGrid { display: none; }
 @media (max-width: 480px) {
   .bar { gap: 8px; }
   .font-ctrl span { display: none; }
@@ -224,6 +232,7 @@ button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
     <button id="epaperBtn" class="icon-btn" aria-pressed="false" aria-label="切換電子紙模式" title="電子紙模式：精簡介面，減少捲動">
       <svg viewBox="0 0 24 24"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 8h8M8 12h8M8 16h5"/></svg>
     </button>
+    <button id="fullscreenBtn" class="icon-btn" aria-pressed="false" aria-label="進入全螢幕" title="進入全螢幕"></button>
     <div class="font-ctrl" aria-label="文字大小">
       <button id="fontDown" aria-label="縮小文字">A−</button>
       <span id="fontVal">18</span>
@@ -238,7 +247,10 @@ button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
     <div class="card">
       <h2>選擇題庫</h2>
       <p class="muted small" id="bankNote"></p>
-      <div id="chapterList"></div>
+      <label class="chapter-select-label" for="chapterSelect">主題</label>
+      <select id="chapterSelect" class="chapter-select"></select>
+      <div class="sec-list" id="sectionList"></div>
+      <p class="muted small" id="otherSelNote" hidden></p>
     </div>
     <div class="card" id="startCard">
       <div class="options-row">
@@ -379,45 +391,100 @@ button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
   if (darkMQ && darkMQ.addEventListener) darkMQ.addEventListener("change", () => { if (!theme) applyTheme(); });
   applyTheme();
 
+  // ---- 全螢幕 ----
+  const EXPAND_ICON = '<svg viewBox="0 0 24 24"><path d="M4 9V4h5M15 4h5v5M20 15v5h-5M9 20H4v-5"/></svg>';
+  const COMPRESS_ICON = '<svg viewBox="0 0 24 24"><path d="M9 4v5H4M15 4v5h5M15 20v-5h5M9 20v-5H4"/></svg>';
+  const fsEl = document.documentElement;
+  const canFullscreen = !!(fsEl.requestFullscreen || fsEl.webkitRequestFullscreen);
+  function isFullscreen() { return !!(document.fullscreenElement || document.webkitFullscreenElement); }
+  function applyFullscreenIcon() {
+    const fs = isFullscreen();
+    $("fullscreenBtn").innerHTML = fs ? COMPRESS_ICON : EXPAND_ICON;
+    $("fullscreenBtn").setAttribute("aria-pressed", fs ? "true" : "false");
+    $("fullscreenBtn").title = $("fullscreenBtn").ariaLabel = fs ? "離開全螢幕" : "進入全螢幕";
+  }
+  if (canFullscreen) {
+    $("fullscreenBtn").onclick = () => {
+      try {
+        if (!isFullscreen()) {
+          const p = fsEl.requestFullscreen ? fsEl.requestFullscreen() : fsEl.webkitRequestFullscreen();
+          if (p && p.catch) p.catch(() => {}); // 有些瀏覽器或內嵌環境會拒絕，安靜略過
+        } else if (document.exitFullscreen) {
+          document.exitFullscreen().catch(() => {});
+        } else if (document.webkitExitFullscreen) {
+          document.webkitExitFullscreen();
+        }
+      } catch (e) {}
+    };
+    ["fullscreenchange", "webkitfullscreenchange"].forEach((ev) => document.addEventListener(ev, applyFullscreenIcon));
+    applyFullscreenIcon();
+  } else {
+    $("fullscreenBtn").hidden = true; // 這個瀏覽器不支援全螢幕 API，藏起按鈕
+  }
+
   // ---- 章節選擇 ----
+  // 封面只顯示「目前選的主題」底下的回次，用下拉選單切換主題；已勾選的回次用 selected 這個集合記住，
+  // 不靠 DOM 的 :checked（切換主題後舊的checkbox 會被換掉），所以跨主題一起選的功能不會不見。
   const sectionMap = {};
   BANK.chapters.forEach((ch) => ch.sections.forEach((s) => { sectionMap[s.id] = { ch, s }; }));
   $("bankNote").textContent = BANK.note || "";
+  const selected = new Set(store.get("selectedSections", []));
 
   function renderSelect() {
-    const saved = store.get("selectedSections", []);
-    $("chapterList").innerHTML = BANK.chapters.map((ch) => {
+    $("chapterSelect").innerHTML = BANK.chapters.map((ch) => {
       const total = ch.sections.reduce((n, s) => n + s.questions.length, 0);
-      return `<div class="card" style="margin:10px 0 0;padding:12px 14px">
-        <div class="chapter-title">Chapter ${ch.chapter}　${esc(ch.title)} <span class="muted small">（${total} 題）</span></div>
-        <div class="sec-list">
-          <label><input type="checkbox" class="ch-all" data-ch="${ch.id}"> <b>整章全部</b><span class="count">${total} 題</span></label>
-          ${ch.sections.map((s) => `<label><input type="checkbox" class="sec" data-ch="${ch.id}" value="${s.id}" ${saved.includes(s.id) ? "checked" : ""}>
-            ${esc(s.title)}<span class="count">${s.questions.length} 題</span></label>`).join("")}
-        </div></div>`;
+      return `<option value="${ch.id}">Chapter ${ch.chapter}　${esc(ch.title)}（${total} 題）</option>`;
     }).join("");
-    document.querySelectorAll(".ch-all").forEach((box) => {
-      box.onchange = () => {
-        document.querySelectorAll(`.sec[data-ch="${box.dataset.ch}"]`).forEach((b) => (b.checked = box.checked));
-        updateSel();
-      };
-    });
-    document.querySelectorAll(".sec").forEach((b) => (b.onchange = updateSel));
+    let curId = store.get("curChapter", BANK.chapters[0].id);
+    if (!BANK.chapters.some((c) => c.id === curId)) curId = BANK.chapters[0].id;
+    $("chapterSelect").value = curId;
+    $("chapterSelect").onchange = () => {
+      store.set("curChapter", $("chapterSelect").value);
+      renderSectionList($("chapterSelect").value);
+      updateSel();
+    };
+    renderSectionList(curId);
     $("optShuffle").checked = store.get("shuffle", false);
     updateSel();
   }
-  function selectedIds() { return [...document.querySelectorAll(".sec:checked")].map((b) => b.value); }
-  function updateSel() {
-    BANK.chapters.forEach((ch) => {
-      const secs = [...document.querySelectorAll(`.sec[data-ch="${ch.id}"]`)];
-      const all = document.querySelector(`.ch-all[data-ch="${ch.id}"]`);
-      all.checked = secs.every((b) => b.checked);
-      all.indeterminate = !all.checked && secs.some((b) => b.checked);
+  function renderSectionList(chId) {
+    const ch = BANK.chapters.find((c) => c.id === chId);
+    const total = ch.sections.reduce((n, s) => n + s.questions.length, 0);
+    const allChecked = ch.sections.every((s) => selected.has(s.id));
+    const anyChecked = ch.sections.some((s) => selected.has(s.id));
+    $("sectionList").innerHTML = `
+      <label><input type="checkbox" class="ch-all" ${allChecked ? "checked" : ""}> <b>整章全部</b><span class="count">${total} 題</span></label>
+      ${ch.sections.map((s) => `<label><input type="checkbox" class="sec" value="${s.id}" ${selected.has(s.id) ? "checked" : ""}>
+        ${esc(s.title)}<span class="count">${s.questions.length} 題</span></label>`).join("")}`;
+    const chAll = $("sectionList").querySelector(".ch-all");
+    chAll.indeterminate = !allChecked && anyChecked;
+    chAll.onchange = () => {
+      ch.sections.forEach((s) => (chAll.checked ? selected.add(s.id) : selected.delete(s.id)));
+      renderSectionList(chId);
+      updateSel();
+    };
+    $("sectionList").querySelectorAll(".sec").forEach((b) => {
+      b.onchange = () => {
+        b.checked ? selected.add(b.value) : selected.delete(b.value);
+        const nowAll = ch.sections.every((s) => selected.has(s.id));
+        const nowAny = ch.sections.some((s) => selected.has(s.id));
+        chAll.checked = nowAll;
+        chAll.indeterminate = !nowAll && nowAny;
+        updateSel();
+      };
     });
+  }
+  function selectedIds() { return [...selected]; }
+  function updateSel() {
+    store.set("selectedSections", selectedIds());
     const ids = selectedIds();
     const n = ids.reduce((t, id) => t + sectionMap[id].s.questions.length, 0);
     $("selCount").textContent = ids.length ? `已選 ${ids.length} 回，共 ${n} 題` : "尚未選擇";
     $("startBtn").disabled = !ids.length;
+    const curId = $("chapterSelect").value;
+    const otherChs = new Set(ids.filter((id) => sectionMap[id].ch.id !== curId).map((id) => sectionMap[id].ch.id));
+    $("otherSelNote").hidden = !otherChs.size;
+    $("otherSelNote").textContent = otherChs.size ? `另外 ${otherChs.size} 個章節也有選取的回次，一起算在開始作答的題目裡。` : "";
   }
   $("startBtn").onclick = () => {
     const ids = selectedIds();
@@ -461,6 +528,10 @@ button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
   function show(view) {
     ["viewSelect", "viewQuiz", "viewResult", "viewHistory"].forEach((v) => $(v).classList.toggle("hidden", v !== view));
     window.scrollTo(0, 0);
+  }
+  // 電子紙模式：捲動改成直接跳過去（只刷新起點與終點），不要有平滑滑動的過程
+  function scrollBehavior() {
+    return (epaperMode || matchMedia("(prefers-reduced-motion: reduce)").matches) ? "auto" : "smooth";
   }
   function startQuiz(qs, label) {
     quiz = { qs, answers: new Array(qs.length).fill(null), idx: 0, label, marks: {}, elim: {}, flags: {} };
@@ -795,13 +866,14 @@ button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
       + (nAlt ? `<span class="chip alt">另一給分答案 ${nAlt} 題</span>` : "") + (nFree ? `<span class="chip free">一律給分 ${nFree} 題</span>` : "");
     $("retryWrongBtn").disabled = right === res.length;
     atPage = 0;
+    if (epaperMode) viewMode = "table"; // 電子紙模式：答案卷預設用可翻頁的一覽表，不用一路往下捲
     $("filterFlagBtn").hidden = !Object.keys(quiz.flags || {}).length;
     document.querySelectorAll("#resMode button").forEach((b) => b.classList.toggle("on", b.dataset.m === viewMode));
     $("resGrid").innerHTML = res.map((r, i) => `<button data-i="${i}" class="${ST_GRID[r.st]} ${isSpecial(r.q) ? "sp" : ""} ${quiz.flags[r.q.id] ? "flag" : ""}">${i + 1}</button>`).join("");
     document.querySelectorAll("#resGrid button").forEach((b) => (b.onclick = () => {
       setFilter("all");
       setMode("detail");
-      document.getElementById("r" + b.dataset.i).scrollIntoView({ behavior: "smooth", block: "start" });
+      document.getElementById("r" + b.dataset.i).scrollIntoView({ behavior: scrollBehavior(), block: "start" });
     }));
     setFilter("all");
     show("viewResult");
@@ -905,7 +977,7 @@ button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
     const row = e.target.closest(".at-row");
     if (!row) return;
     setMode("detail");
-    document.getElementById("r" + row.dataset.i)?.scrollIntoView({ behavior: "smooth", block: "start" });
+    document.getElementById("r" + row.dataset.i)?.scrollIntoView({ behavior: scrollBehavior(), block: "start" });
   });
   $("retryWrongBtn").onclick = () => {
     const wrong = quiz.result.filter((r) => !r.ok).map((r) => r.q);
@@ -1013,7 +1085,7 @@ button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
   const backToTop = $("backToTopBtn");
   function updateBackToTop() { backToTop.classList.toggle("show", window.scrollY >= 400); }
   window.addEventListener("scroll", updateBackToTop, { passive: true });
-  backToTop.onclick = () => window.scrollTo({ top: 0, behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" });
+  backToTop.onclick = () => window.scrollTo({ top: 0, behavior: scrollBehavior() });
   updateBackToTop();
 
   applyEpaper();
