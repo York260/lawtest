@@ -5,7 +5,7 @@
 :root {
   --bg: #f6f7f9; --card: #fff; --text: #1d232b; --muted: #66707c; --line: #dde1e6;
   --accent: #2458c6; --accent-soft: #e8eefb; --ok: #1a7f45; --ok-soft: #e4f4ea;
-  --bad: #c22f2f; --bad-soft: #fbe8e8; --warn: #9a6400;
+  --bad: #c22f2f; --bad-soft: #fbe8e8; --warn: #9a6400; --warn-soft: #faf0d6;
   --alt: #7b3fc4; --alt-soft: #f0e8fb; --free: #b25e00; --free-soft: #fdeed8;
   --hl: #fff08a; --elim-line: #e8a0a0; --elim-bg: #fdf3f3;
   --fs: 18px;
@@ -14,7 +14,7 @@
   :root:not([data-theme="light"]) {
     --bg: #14171b; --card: #1d2127; --text: #e6e9ed; --muted: #9aa3ad; --line: #323840;
     --accent: #7ea3f2; --accent-soft: #24304a; --ok: #5cc98a; --ok-soft: #1c3527;
-    --bad: #f07b7b; --bad-soft: #402325; --warn: #e0b050; color-scheme: dark;
+    --bad: #f07b7b; --bad-soft: #402325; --warn: #e0b050; --warn-soft: #3a2f10; color-scheme: dark;
     --alt: #b993f0; --alt-soft: #2f2245; --free: #f0b45c; --free-soft: #3e2e14;
     --hl: #6b5d12; --elim-line: #8f4d4d; --elim-bg: #2a1f21;
   }
@@ -22,7 +22,7 @@
   :root[data-theme="dark"] {
   color-scheme: dark; --bg: #14171b; --card: #1d2127; --text: #e6e9ed; --muted: #9aa3ad; --line: #323840;
   --accent: #7ea3f2; --accent-soft: #24304a; --ok: #5cc98a; --ok-soft: #1c3527;
-  --bad: #f07b7b; --bad-soft: #402325; --warn: #e0b050;
+  --bad: #f07b7b; --bad-soft: #402325; --warn: #e0b050; --warn-soft: #3a2f10;
   --alt: #b993f0; --alt-soft: #2f2245; --free: #f0b45c; --free-soft: #3e2e14;
   --hl: #6b5d12; --elim-line: #8f4d4d; --elim-bg: #2a1f21;
 }
@@ -82,12 +82,15 @@ h2 { font-size: 1.15em; margin: 0 0 10px; }
 .grid button.alt { background: var(--alt-soft); border-color: var(--alt); color: var(--alt); }
 .grid button.free { background: var(--free-soft); border-color: var(--free); color: var(--free); }
 .grid button.sp { box-shadow: inset 0 -3px 0 var(--alt); }
+.grid button.flag { box-shadow: inset 0 3px 0 var(--warn); }
+.grid button.sp.flag { box-shadow: inset 0 -3px 0 var(--alt), inset 0 3px 0 var(--warn); }
 .review.alt { border-left: 5px solid var(--alt); }
 .review.free { border-left: 5px solid var(--free); }
 .review .ro.correct-alt { background: var(--alt-soft); color: var(--alt); font-weight: 600; outline: 1px dashed var(--alt); }
 .tag.alt { background: var(--alt-soft); color: var(--alt); }
 .tag.free { background: var(--free-soft); color: var(--free); }
 .tag.sp { background: transparent; color: var(--alt); border: 1px solid var(--alt); margin-left: 6px; }
+.tag.flag { background: transparent; color: var(--warn); border: 1px solid var(--warn); margin-left: 6px; }
 .ans-line b.alt { color: var(--alt); }
 .ans-line b.free { color: var(--free); }
 .sp-note { margin: 10px 0 0; padding: 8px 12px; border-radius: 8px; font-size: .9em; border: 1px solid var(--alt); background: var(--alt-soft); color: var(--alt); }
@@ -96,6 +99,8 @@ h2 { font-size: 1.15em; margin: 0 0 10px; }
 .at-row.alt .at-correct { color: var(--alt); }
 .at-row.free { background: var(--free-soft); }
 .at-row.free .at-correct { color: var(--free); }
+.at-flag { flex: none; color: var(--warn); display: inline-flex; }
+.at-flag svg { width: 15px; height: 15px; stroke: currentColor; fill: var(--warn); stroke-width: 1.5; }
 .chip { display: inline-block; padding: 0 8px; border-radius: 999px; font-size: .8em; margin-left: 6px; border: 1px solid; }
 .chip.alt { color: var(--alt); border-color: var(--alt); background: var(--alt-soft); }
 .chip.free { color: var(--free); border-color: var(--free); background: var(--free-soft); }
@@ -121,6 +126,16 @@ h2 { font-size: 1.15em; margin: 0 0 10px; }
 .bar h1 { min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .icon-btn { width: 36px; height: 32px; padding: 0; display: inline-flex; align-items: center; justify-content: center; }
 .icon-btn svg { width: 18px; height: 18px; stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.icon-btn[aria-pressed="true"] { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); }
+.q-meta-right { display: flex; align-items: center; gap: 8px; }
+.flag-btn { width: 26px; height: 26px; padding: 0; border-radius: 6px; display: inline-flex; align-items: center; justify-content: center; flex: none; }
+.flag-btn svg { width: 15px; height: 15px; stroke: currentColor; fill: none; stroke-width: 1.8; }
+.flag-btn[aria-pressed="true"] { background: var(--warn-soft); border-color: var(--warn); color: var(--warn); }
+.flag-btn[aria-pressed="true"] svg { fill: var(--warn); }
+/* ---- 電子紙模式：精簡作答頁面介面，減少需要上下捲動的內容 ---- */
+body.epaper #viewQuiz .tools-row,
+body.epaper #viewQuiz .progress,
+body.epaper #viewQuiz #qGrid { display: none; }
 @media (max-width: 480px) {
   .bar { gap: 8px; }
   .font-ctrl span { display: none; }
@@ -156,7 +171,7 @@ mark.hl { background: var(--hl); color: inherit; border-radius: 3px; padding: 0 
   border: 1px solid var(--line); border-radius: 10px; font-variant-numeric: tabular-nums; cursor: pointer;
 }
 .at-row:hover { background: var(--accent-soft); }
-.at-row .at-num { width: 2.6em; color: var(--muted); font-size: .85em; flex: none; }
+.at-row .at-num { min-width: 2.6em; color: var(--muted); font-size: .85em; flex: none; display: inline-flex; align-items: center; gap: 3px; }
 .at-row .at-mine, .at-row .at-correct { min-width: 2.8em; font-weight: 700; text-align: center; flex: none; }
 .at-row.wrong { background: var(--bad-soft); }
 .at-row.wrong:hover { background: var(--bad-soft); filter: brightness(0.96); }
@@ -200,6 +215,9 @@ button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
     <h1 id="homeLink" title="回到章節選擇">警察法規刷題</h1>
     <button id="historyBtn" class="hist-btn"><span class="long">答案卷紀錄</span><span class="short">紀錄</span></button>
     <button id="themeBtn" class="icon-btn" aria-label="切換白天／夜間模式" title="切換白天／夜間模式"></button>
+    <button id="epaperBtn" class="icon-btn" aria-pressed="false" aria-label="切換電子紙模式" title="電子紙模式：精簡介面，減少捲動">
+      <svg viewBox="0 0 24 24"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 8h8M8 12h8M8 16h5"/></svg>
+    </button>
     <div class="font-ctrl" aria-label="文字大小">
       <button id="fontDown" aria-label="縮小文字">A−</button>
       <span id="fontVal">18</span>
@@ -230,7 +248,15 @@ button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
   <!-- 作答 -->
   <section id="viewQuiz" class="hidden">
     <div class="card">
-      <div class="q-meta"><span id="qSource"></span><span id="qCounter"></span></div>
+      <div class="q-meta">
+        <span id="qSource"></span>
+        <span class="q-meta-right">
+          <button id="flagBtn" class="flag-btn" aria-pressed="false" aria-label="標記本題（不確定）" title="標記本題（不確定）">
+            <svg viewBox="0 0 24 24"><path d="M5 3v18"/><path d="M5 4h12l-2.5 4L17 12H5Z"/></svg>
+          </button>
+          <span id="qCounter"></span>
+        </span>
+      </div>
       <div class="progress"><div id="qProgress"></div></div>
       <div class="tools-row">
         <button id="hlBtn" aria-pressed="false"><svg viewBox="0 0 24 24"><path d="M9 11l-6 6v3h9l3-3"/><path d="M22 12l-4.6 4.6a2 2 0 0 1-2.8 0l-5.2-5.2a2 2 0 0 1 0-2.8L14 4"/></svg>螢光筆</button>
@@ -286,6 +312,7 @@ button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
         <button data-f="all" class="on">全部</button>
         <button data-f="wrong">只看錯題</button>
         <button data-f="right">只看答對</button>
+        <button data-f="flag" id="filterFlagBtn" hidden>只看標記</button>
       </div>
       <div class="filter" id="resMode">
         <button data-m="detail" class="on">詳細列表</button>
@@ -404,6 +431,19 @@ button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
     return a;
   }
 
+  // ---- 電子紙模式：電子紙不適合上下捲動，開啟後精簡作答頁面（藏螢光筆列、進度條、題號格），只留必要操作 ----
+  let epaperMode = store.get("epaper", false);
+  function applyEpaper() {
+    document.body.classList.toggle("epaper", epaperMode);
+    $("epaperBtn").setAttribute("aria-pressed", epaperMode ? "true" : "false");
+    if (quiz) renderQuiz();
+  }
+  $("epaperBtn").onclick = () => {
+    epaperMode = !epaperMode;
+    store.set("epaper", epaperMode);
+    applyEpaper();
+  };
+
   // ---- 作答 ----
   let quiz = null; // { qs, answers, idx, label }
   function show(view) {
@@ -411,12 +451,12 @@ button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
     window.scrollTo(0, 0);
   }
   function startQuiz(qs, label) {
-    quiz = { qs, answers: new Array(qs.length).fill(null), idx: 0, label, marks: {}, elim: {} };
+    quiz = { qs, answers: new Array(qs.length).fill(null), idx: 0, label, marks: {}, elim: {}, flags: {} };
     saveProgress();
     renderQuiz();
     show("viewQuiz");
   }
-  function saveProgress() { store.set("progress", quiz ? { ids: quiz.qs.map((q) => q.id), answers: quiz.answers, idx: quiz.idx, label: quiz.label, marks: quiz.marks, elim: quiz.elim } : null); }
+  function saveProgress() { store.set("progress", quiz ? { ids: quiz.qs.map((q) => q.id), answers: quiz.answers, idx: quiz.idx, label: quiz.label, marks: quiz.marks, elim: quiz.elim, flags: quiz.flags } : null); }
 
   function renderQuiz() {
     const q = quiz.qs[quiz.idx];
@@ -434,13 +474,15 @@ button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
     ).join("");
     document.querySelectorAll(".opt").forEach(bindOption);
     $("hlClear").disabled = !quiz.marks[q.id] && !quiz.elim[q.id];
+    $("flagBtn").setAttribute("aria-pressed", quiz.flags[q.id] ? "true" : "false");
     $("prevBtn").disabled = quiz.idx === 0;
     $("nextBtn").textContent = quiz.idx === n - 1 ? "最後一題" : "下一題 →";
     $("nextBtn").disabled = quiz.idx === n - 1;
     const done = quiz.answers.filter(Boolean).length;
-    $("answeredInfo").textContent = `已作答 ${done} / ${n}　（點題號可跳題）`;
+    const flagged = Object.keys(quiz.flags).length;
+    $("answeredInfo").textContent = `已作答 ${done} / ${n}` + (flagged ? `・已標記 ${flagged} 題` : "") + (epaperMode ? "" : "　（點題號可跳題）");
     $("qGrid").innerHTML = quiz.qs.map((_, i) =>
-      `<button data-i="${i}" class="${quiz.answers[i] ? "done" : ""} ${i === quiz.idx ? "cur" : ""} ${isSpecial(quiz.qs[i]) ? "sp" : ""}">${i + 1}</button>`
+      `<button data-i="${i}" class="${quiz.answers[i] ? "done" : ""} ${i === quiz.idx ? "cur" : ""} ${isSpecial(quiz.qs[i]) ? "sp" : ""} ${quiz.flags[quiz.qs[i].id] ? "flag" : ""}">${i + 1}</button>`
     ).join("");
     document.querySelectorAll("#qGrid button").forEach((b) => (b.onclick = () => go(+b.dataset.i)));
   }
@@ -501,6 +543,14 @@ button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
   }
   $("prevBtn").onclick = () => go(quiz.idx - 1);
   $("nextBtn").onclick = () => go(quiz.idx + 1);
+  // 標記不確定的題目：存在 quiz.flags（題目 id → true），交卷後也保留在答案卷紀錄裡
+  function toggleFlag() {
+    const qid = quiz.qs[quiz.idx].id;
+    if (quiz.flags[qid]) delete quiz.flags[qid]; else quiz.flags[qid] = true;
+    saveProgress();
+    renderQuiz();
+  }
+  $("flagBtn").onclick = toggleFlag;
   document.addEventListener("keydown", (e) => {
     if ($("viewQuiz").classList.contains("hidden") || e.ctrlKey || e.metaKey || e.altKey) return;
     const k = e.key.toUpperCase();
@@ -509,6 +559,7 @@ button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
     else if (/^[1-5]$/.test(e.key) && ks[+e.key - 1]) choose(ks[+e.key - 1]);
     else if (e.key === "ArrowLeft") go(quiz.idx - 1);
     else if (e.key === "ArrowRight") go(quiz.idx + 1);
+    else if (k === "F") toggleFlag();
   });
 
   $("submitBtn").onclick = () => {
@@ -703,6 +754,7 @@ button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
       qids: quiz.qs.map((q) => q.id),
       mine: quiz.answers.map((a) => a || ""),
       marks: quiz.marks,
+      flags: quiz.flags,
     };
     const res = quiz.qs.map((q, i) => mkRes(q, quiz.answers[i]));
     rec.right = res.filter((r) => r.ok).length;
@@ -726,8 +778,9 @@ button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
       + (nAlt ? `<span class="chip alt">另一給分答案 ${nAlt} 題</span>` : "") + (nFree ? `<span class="chip free">一律給分 ${nFree} 題</span>` : "");
     $("retryWrongBtn").disabled = right === res.length;
     atPage = 0;
+    $("filterFlagBtn").hidden = !Object.keys(quiz.flags || {}).length;
     document.querySelectorAll("#resMode button").forEach((b) => b.classList.toggle("on", b.dataset.m === viewMode));
-    $("resGrid").innerHTML = res.map((r, i) => `<button data-i="${i}" class="${ST_GRID[r.st]} ${isSpecial(r.q) ? "sp" : ""}">${i + 1}</button>`).join("");
+    $("resGrid").innerHTML = res.map((r, i) => `<button data-i="${i}" class="${ST_GRID[r.st]} ${isSpecial(r.q) ? "sp" : ""} ${quiz.flags[r.q.id] ? "flag" : ""}">${i + 1}</button>`).join("");
     document.querySelectorAll("#resGrid button").forEach((b) => (b.onclick = () => {
       setFilter("all");
       setMode("detail");
@@ -755,13 +808,19 @@ button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
     renderResultList();
   }
   document.querySelectorAll("#resMode button").forEach((b) => (b.onclick = () => setMode(b.dataset.m)));
+  function matchesFilter(r) {
+    if (filter === "wrong") return !r.ok;
+    if (filter === "right") return r.ok;
+    if (filter === "flag") return !!quiz.flags[r.q.id];
+    return true;
+  }
   function renderResultList() {
-    const items = quiz.result.map((r, i) => ({ ...r, i })).filter((r) => filter === "all" || (filter === "wrong" ? !r.ok : r.ok));
+    const items = quiz.result.map((r, i) => ({ ...r, i })).filter(matchesFilter);
     if (viewMode === "table") { renderAnswerTable(items); return; }
     $("resList").innerHTML = items.length ? items.map(({ q, mine, ok, st, i }) => `
       <div class="card review ${ST_GRID[st]}" id="r${i}">
         <div class="q-meta"><span>${i + 1}.　${esc(q.src)}　第 ${q.number} 題</span>
-          <span><span class="tag ${ST_GRID[st]}">${ST_TAG[st]}</span>${isSpecial(q) ? `<span class="tag sp">特殊題</span>` : ""}</span></div>
+          <span><span class="tag ${ST_GRID[st]}">${ST_TAG[st]}</span>${isSpecial(q) ? `<span class="tag sp">特殊題</span>` : ""}${quiz.flags[q.id] ? `<span class="tag flag">已標記</span>` : ""}</span></div>
         <div class="q-text">${markHTML(q.question, (quiz.marks[q.id] || {}).q)}</div>
         ${optKeys(q).map((k) => `<div class="ro ${primaryKeys(q).includes(k) ? "correct" : correctKeys(q).includes(k) ? "correct-alt" : (mine || "").includes(k) && !q.full_credit ? "mine-wrong" : ""}"><span>(${k})</span><span>${markHTML(q.options[k], (quiz.marks[q.id] || {})[k])}</span></div>`).join("")}
         <div class="ans-line">你的答案：<b class="${st === "alt" ? "alt" : st === "free" ? "free" : ok ? "ok" : "bad"}">${mine ? "(" + mine + ")" : "未作答"}</b>　正確答案：<b class="${q.full_credit ? "free" : isSpecial(q) ? "alt" : "ok"}">${answerText(q)}</b></div>
@@ -797,9 +856,10 @@ button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
     atPage = Math.min(Math.max(atPage, 0), pages - 1);
     const start = atPage * pageSize;
     const chunk = items.slice(start, start + pageSize);
+    const FLAG_ICON = `<svg viewBox="0 0 24 24"><path d="M5 3v18" fill="none" stroke-width="1.5"/><path d="M5 4h12l-2.5 4L17 12H5Z"/></svg>`;
     const rows = chunk.map(({ q, mine, st, i }) => `
       <div class="at-row ${ST_ROW[st]}" data-i="${i}">
-        <span class="at-num">${i + 1}</span>
+        <span class="at-num">${i + 1}${quiz.flags[q.id] ? `<span class="at-flag" title="已標記">${FLAG_ICON}</span>` : ""}</span>
         <span class="at-mine">${mine ? esc(mine) : "－"}</span>
         <span class="at-correct">${q.full_credit ? "一律給分" : esc((q.accepted || [q.answer]).join(" / "))}</span>
       </div>`).join("");
@@ -832,14 +892,16 @@ button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
   });
   $("retryWrongBtn").onclick = () => {
     const wrong = quiz.result.filter((r) => !r.ok).map((r) => r.q);
-    const marks = quiz.marks;
+    const marks = quiz.marks, flags = quiz.flags;
     startQuiz(wrong, quiz.label + "（錯題重做）");
-    quiz.marks = marks; saveProgress(); renderQuiz();
+    quiz.marks = marks; quiz.flags = flags; saveProgress(); renderQuiz();
   };
   $("retryAllBtn").onclick = () => {
     const qs = quiz.qs.slice();
+    const flags = quiz.flags;
     if (store.get("shuffle", false)) shuffle(qs);
     startQuiz(qs, quiz.label.replace(/（錯題重做）$/, ""));
+    quiz.flags = flags; saveProgress(); renderQuiz();
   };
   $("backBtn").onclick = () => { quiz = null; renderSelect(); show("viewSelect"); };
   $("homeLink").onclick = () => {
@@ -867,7 +929,7 @@ button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
       <span class="actions"><button id="discardBtn">放棄</button><button class="primary" id="resumeBtn">繼續作答</button></span></div>`;
     $("viewSelect").prepend(card);
     $("resumeBtn").onclick = () => {
-      quiz = { qs: p.ids.map((id) => byId[id]), answers: p.answers, idx: p.idx || 0, label: p.label, marks: p.marks || {}, elim: p.elim || {} };
+      quiz = { qs: p.ids.map((id) => byId[id]), answers: p.answers, idx: p.idx || 0, label: p.label, marks: p.marks || {}, elim: p.elim || {}, flags: p.flags || {} };
       renderQuiz();
       show("viewQuiz");
     };
@@ -923,7 +985,7 @@ button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
   function openRecord(rec) {
     // 題庫之後若有更正，這裡以目前題庫的題目與答案重新批改
     const pairs = rec.qids.map((id, i) => ({ q: byId[id], mine: rec.mine[i] || null })).filter((p) => p.q);
-    quiz = { qs: pairs.map((p) => p.q), answers: pairs.map((p) => p.mine), idx: 0, label: rec.label, marks: rec.marks || {}, elim: {} };
+    quiz = { qs: pairs.map((p) => p.q), answers: pairs.map((p) => p.mine), idx: 0, label: rec.label, marks: rec.marks || {}, elim: {}, flags: rec.flags || {} };
     showResult(pairs.map((p) => mkRes(p.q, p.mine)), rec.label, rec.ts);
   }
   function openHistory() { renderHistory(); show("viewHistory"); }
@@ -937,6 +999,7 @@ button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
   backToTop.onclick = () => window.scrollTo({ top: 0, behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" });
   updateBackToTop();
 
+  applyEpaper();
   renderSelect();
   offerResume();
 })();
