@@ -442,6 +442,12 @@ button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
   function applyEpaper() {
     document.body.classList.toggle("epaper", epaperMode);
     $("epaperBtn").setAttribute("aria-pressed", epaperMode ? "true" : "false");
+    if (epaperMode) {
+      // 電子紙模式不提供螢光筆：強制關閉，並清掉殘留的樣式狀態
+      hlMode = false;
+      $("hlBtn").setAttribute("aria-pressed", "false");
+      $("viewQuiz").classList.remove("hl-on");
+    }
     if (quiz) renderQuiz();
   }
   $("epaperBtn").onclick = () => {
@@ -531,6 +537,11 @@ button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
   function choose(k) {
     const qid = quiz.qs[quiz.idx].id;
     const cur = quiz.answers[quiz.idx] || "";
+    // 電子紙模式、單選題：再點一次已選的答案 = 直接前往下一題（省得另外按下一題）
+    if (epaperMode && !isMulti(quiz.qs[quiz.idx]) && cur === k) {
+      go(quiz.idx + 1);
+      return;
+    }
     if (!cur.includes(k) && (quiz.elim[qid] || "").includes(k)) setElim(qid, quiz.elim[qid].replace(k, ""));
     if (isMulti(quiz.qs[quiz.idx])) {
       const next = (cur.includes(k) ? cur.replace(k, "") : cur + k).split("").sort().join("");
@@ -632,7 +643,7 @@ button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
   document.addEventListener("pointerdown", (e) => {
     tapStart = null;
     const hit = document.elementFromPoint(e.clientX, e.clientY); // 手指正下方的元素（不受瀏覽器自動校正影響）
-    if ($("viewQuiz").classList.contains("hidden") || !hit || !hit.closest("main") || hit.closest(NOT_BLANK)) return;
+    if (epaperMode || $("viewQuiz").classList.contains("hidden") || !hit || !hit.closest("main") || hit.closest(NOT_BLANK)) return;
     if (e.pointerType === "mouse" && e.button !== 0) return;
     tapStart = { x: e.clientX, y: e.clientY, t: Date.now(), id: e.pointerId };
   }, true);
